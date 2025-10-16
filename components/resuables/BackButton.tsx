@@ -36,6 +36,7 @@ const BackButton = (props: screenName) => {
         marginTop: 10,  
         flexDirection: "row",
         gap: 10,
+        marginLeft: 10,
     },
     BackButtonText : {
         color: "white",

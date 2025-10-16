@@ -4,10 +4,10 @@ import React from 'react';
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTheme } from '@/contexts/ThemeContext';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const { colorScheme } = useTheme();
 
   return (
     <Tabs
@@ -18,6 +18,8 @@ export default function TabLayout() {
         tabBarStyle: {
           paddingVertical: 3,
           height: 55,
+          backgroundColor: Colors[colorScheme].background,
+          borderTopColor: Colors[colorScheme].icon,
         },
       }}>
       <Tabs.Screen
