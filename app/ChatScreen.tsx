@@ -25,6 +25,8 @@ export default function ChatScreen() {
     isTyping,
     startTyping,
     stopTyping,
+    isPending,
+    pendingMessage,
   } = useChat();
   const { colorScheme } = useTheme();
   const colors = Colors[colorScheme];
@@ -96,7 +98,7 @@ export default function ChatScreen() {
           <Text
             style={[
               styles.messageText,
-              { color: isMyMessage ? "#ffffff" : "#000000" },
+              { color: isMyMessage ? "#000000ff" : "#ffffffff" },
             ]}
           >
             {item.message}
@@ -155,22 +157,34 @@ export default function ChatScreen() {
       </View>
 
       {/* Messages List */}
-      <FlatList
-        ref={flatListRef}
-        data={messages}
-        keyExtractor={(item) => item._id}
-        renderItem={renderMessage}
-        contentContainerStyle={styles.messagesList}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={[styles.emptyText, { color: colors.icon }]}>
-              Start the conversation!
-            </Text>
-          </View>
-        }
-      />
+      {isPending ? (
+        <View style={styles.pendingContainer}>
+          <Ionicons name="time-outline" size={64} color={colors.icon} />
+          <Text style={[styles.pendingTitle, { color: colors.text }]}>
+            Waiting for Response
+          </Text>
+          <Text style={[styles.pendingMessage, { color: colors.icon }]}>
+            {pendingMessage}
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          ref={flatListRef}
+          data={messages}
+          keyExtractor={(item) => item._id}
+          renderItem={renderMessage}
+          contentContainerStyle={styles.messagesList}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={[styles.emptyText, { color: colors.icon }]}>
+                Start the conversation!
+              </Text>
+            </View>
+          }
+        />
+      )}
 
-      {/* Input Area */}
+      {/* Input Area - Disabled when pending */}
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
@@ -186,17 +200,21 @@ export default function ChatScreen() {
               styles.input,
               { backgroundColor: "#E8E8E8", color: "#000000" },
             ]}
-            placeholder="Type a message..."
+            placeholder={isPending ? "Chat is pending..." : "Type a message..."}
             placeholderTextColor="#999"
             value={inputMessage}
             onChangeText={handleTyping}
             multiline
             maxLength={500}
+            editable={!isPending}
           />
           <TouchableOpacity
-            style={[styles.sendButton, { backgroundColor: colors.tint }]}
+            style={[
+              styles.sendButton,
+              { backgroundColor: isPending ? "#ccc" : colors.tint },
+            ]}
             onPress={handleSend}
-            disabled={!inputMessage.trim()}
+            disabled={isPending || !inputMessage.trim()}
           >
             <Ionicons name="send" size={20} color="#ffffff" />
           </TouchableOpacity>
@@ -265,6 +283,24 @@ const styles = StyleSheet.create({
   messageTime: {
     fontSize: 11,
     marginTop: 4,
+  },
+  pendingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 40,
+  },
+  pendingTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    marginTop: 20,
+    marginBottom: 10,
+    textAlign: "center",
+  },
+  pendingMessage: {
+    fontSize: 16,
+    textAlign: "center",
+    lineHeight: 24,
   },
   inputContainer: {
     flexDirection: "row",

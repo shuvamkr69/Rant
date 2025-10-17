@@ -36,6 +36,9 @@ type ChatContextType = {
   isTyping: boolean;
   startTyping: (receiverId: string) => void;
   stopTyping: (receiverId: string) => void;
+  isPending: boolean;
+  pendingMessage: string;
+  reconnectSocket: () => Promise<void>;
 };
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -46,26 +49,43 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
   const [matches, setMatches] = useState<Match[]>([]);
   const [currentChatUser, setCurrentChatUser] = useState<Match | null>(null);
   const [isTyping, setIsTyping] = useState(false);
+  const [isPending, setIsPending] = useState(false);
+  const [pendingMessage, setPendingMessage] = useState("");
 
   useEffect(() => {
     initSocket();
 
     return () => {
       if (socket) {
+        console.log("🔌 Disconnecting socket on unmount");
         socket.disconnect();
       }
     };
   }, []);
 
+  // DO NOT auto-reconnect - this was causing issues
+  // Socket should only be initialized once per session
+  // Use reconnectSocket() manually if needed
+
   const initSocket = async () => {
     try {
       const token = await AsyncStorage.getItem("accessToken");
-      if (!token) return;
+      console.log(
+        "🔌 Initializing socket with token:",
+        token ? token.substring(0, 20) + "..." : "none"
+      );
+
+      if (!token) {
+        console.log("⚠️ No token found, skipping socket initialization");
+        return;
+      }
 
       // Dynamic import to avoid issues
       const { io } = await import("socket.io-client");
       const SOCKET_URL =
         process.env.EXPO_PUBLIC_BACKEND_URL || "http://localhost:5000";
+
+      console.log("🔌 Connecting to socket server:", SOCKET_URL);
 
       const newSocket = io(SOCKET_URL, {
         auth: { token },
@@ -73,7 +93,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
       });
 
       newSocket.on("connect", () => {
-        console.log("✅ Socket connected");
+        console.log("✅ Socket connected with ID:", newSocket.id);
       });
 
       newSocket.on("receive_message", (message: Message) => {
@@ -108,7 +128,20 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const sendMessage = (receiverId: string, message: string) => {
+    console.log("📤 Sending message:", {
+      receiverId,
+      message,
+      socketConnected: !!socket,
+    });
+
+    if (!socket) {
+      console.error("❌ Socket not connected! Trying to reconnect...");
+      initSocket();
+      return;
+    }
+
     if (socket && message.trim()) {
+      console.log("📨 Emitting send_message event to:", receiverId);
       socket.emit("send_message", { receiverId, message: message.trim() });
 
       // Optimistically add message to UI
@@ -128,7 +161,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       const { api } = require("../utils/api");
       console.log("📜 Loading chat history with:", otherUserId);
-      const response = await api.get(`/api/v1/chat/history/${otherUserId}`);
+      const response = await api.get(`/api/v1/users/history/${otherUserId}`);
 
       if (response.status === 200) {
         console.log(
@@ -137,16 +170,20 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
           "messages"
         );
         setMessages(response.data.messages);
+        setIsPending(response.data.isPending || false);
+        setPendingMessage(response.data.message || "");
       }
     } catch (error) {
       console.error("❌ Error loading chat history:", error);
+      setIsPending(false);
+      setPendingMessage("");
     }
   };
 
   const loadMatches = async () => {
     try {
       const { api } = require("../utils/api");
-      const response = await api.get("/api/v1/users/chat/fetchMatches");
+      const response = await api.get("/api/v1/users/fetchMatches");
 
       if (response.status === 200) {
         console.log(
@@ -174,6 +211,25 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const reconnectSocket = async () => {
+    console.log("🔄 Manually reconnecting socket with fresh token...");
+
+    // Completely destroy old socket
+    if (socket) {
+      console.log("🔌 Removing all listeners and disconnecting old socket");
+      socket.removeAllListeners();
+      socket.disconnect();
+      setSocket(null);
+    }
+
+    // Wait a bit to ensure clean disconnect
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    // Create fresh socket with new token
+    await initSocket();
+    console.log("✅ Socket reconnection complete");
+  };
+
   return (
     <ChatContext.Provider
       value={{
@@ -188,6 +244,9 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
         isTyping,
         startTyping,
         stopTyping,
+        isPending,
+        pendingMessage,
+        reconnectSocket,
       }}
     >
       {children}

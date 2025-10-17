@@ -1,8 +1,18 @@
 import TopBar from "@/components/resuables/TopBar";
 import { api } from "@/components/utils/api";
-import { useFocusEffect } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { Dimensions, StyleSheet, Text, View } from "react-native";
+import {
+  Alert,
+  Dimensions,
+  Modal,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import Swiper from "react-native-deck-swiper";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -11,14 +21,29 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 export default function HomeScreen() {
   const [profiles, setProfiles] = useState<Array<any>>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentUserType, setCurrentUserType] = useState<string>("");
+  const [showMessageModal, setShowMessageModal] = useState(false);
+  const [preMatchMessage, setPreMatchMessage] = useState("");
+  const [selectedProfile, setSelectedProfile] = useState<any>(null);
+  const router = useRouter();
+
+  const fetchCurrentUser = async () => {
+    try {
+      const response = await api.get("/api/v1/users/myProfile");
+      if (response.status === 200) {
+        setCurrentUserType(response.data.userType);
+        console.log("👤 Current user type:", response.data.userType);
+      }
+    } catch (error) {
+      console.error("❌ Error fetching current user:", error);
+    }
+  };
 
   const fetchProfiles = async () => {
     try {
-      console.log("🔄 Fetching profiles...");
       const response = await api.get("/api/v1/users/profiles");
-      console.log("📦 Response:", response);
       if (response.status === 200) {
-        console.log("✅ Profiles fetched successfully:", response.data);
+        console.log("📦 Profiles received:", response.data);
         setProfiles(response.data);
         setCurrentIndex(0);
       }
@@ -29,6 +54,7 @@ export default function HomeScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      fetchCurrentUser();
       fetchProfiles();
     }, [])
   );
@@ -45,13 +71,38 @@ export default function HomeScreen() {
 
       const response = await api.post("/api/v1/users/accept", {
         otherUserId: swipedProfile?._id,
+        preMatchMessage: preMatchMessage || null, // Send pre-match message if exists
       });
 
       if (response.status === 200) {
         console.log("✅ Accepted profile successfully:", response.data);
+        setPreMatchMessage(""); // Clear message after sending
       }
     } catch (error) {
       console.error("❌ Error accepting profile:", error);
+    }
+  };
+
+  const handleChatPress = (profile: any) => {
+    setSelectedProfile(profile);
+    setShowMessageModal(true);
+  };
+
+  const handleSendMessageAndSwipeRight = async () => {
+    if (!preMatchMessage.trim()) {
+      Alert.alert("Error", "Please enter a message");
+      return;
+    }
+
+    setShowMessageModal(false);
+
+    // Find the profile index and trigger swipe right with message
+    const profileIndex = profiles.findIndex(
+      (p) => p._id === selectedProfile._id
+    );
+    if (profileIndex !== -1) {
+      await handleSwipeRight(profileIndex);
+      // The swiper will automatically move to next card
     }
   };
 
@@ -93,14 +144,58 @@ export default function HomeScreen() {
                 );
               }
 
+              // Check if current user is "User" viewing "Listener"
+              const canSendPreMessage =
+                currentUserType === "User" && card.userType === "Listener";
+
+              // Check if this is a Listener viewing a User with pre-match message
+              const hasPreMessage =
+                currentUserType === "Listener" && card.preMatchMessage;
+
+              console.log("🎴 Card rendering:", {
+                cardName: card.name,
+                cardUserType: card.userType,
+                currentUserType,
+                canSendPreMessage,
+                hasPreMessage,
+                preMatchMessage: card.preMatchMessage,
+              });
+
               return (
                 <View style={styles.card}>
                   <Text style={styles.profileCardText}>
-                    {card.name || card.username || JSON.stringify(card)}
+                    {card.name || card.username || "Unknown"}
                   </Text>
                   <Text style={styles.profileDetails}>
                     User Type: {card.userType || "N/A"}
                   </Text>
+
+                  {/* Show pre-match message if Listener is viewing User's card */}
+                  {hasPreMessage && (
+                    <View style={styles.preMessageContainer}>
+                      <Text style={styles.preMessageLabel}>
+                        Message from this user:
+                      </Text>
+                      <Text style={styles.preMessageText}>
+                        {card.preMatchMessage}
+                      </Text>
+                    </View>
+                  )}
+
+                  {/* Show chat button if User is viewing Listener */}
+                  {canSendPreMessage && (
+                    <TouchableOpacity
+                      style={styles.chatButton}
+                      onPress={() => handleChatPress(card)}
+                    >
+                      <Ionicons
+                        name="chatbubble-outline"
+                        size={24}
+                        color="#fff"
+                      />
+                      <Text style={styles.chatButtonText}>Send Message</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               );
             }}
@@ -131,6 +226,57 @@ export default function HomeScreen() {
           </View>
         )}
       </View>
+
+      {/* Pre-Match Message Modal */}
+      <Modal
+        visible={showMessageModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowMessageModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>
+              Send a message to {selectedProfile?.name}
+            </Text>
+            <Text style={styles.modalSubtitle}>
+              Send one message before matching. They'll see it when viewing your
+              profile.
+            </Text>
+
+            <TextInput
+              style={styles.messageInput}
+              placeholder="Type your message..."
+              placeholderTextColor="#999"
+              multiline
+              maxLength={200}
+              value={preMatchMessage}
+              onChangeText={setPreMatchMessage}
+            />
+
+            <Text style={styles.charCount}>{preMatchMessage.length}/200</Text>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => {
+                  setShowMessageModal(false);
+                  setPreMatchMessage("");
+                }}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modalButton, styles.sendButton]}
+                onPress={handleSendMessageAndSwipeRight}
+              >
+                <Text style={styles.sendButtonText}>Send & Like</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -177,6 +323,111 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#999",
     marginTop: 5,
+  },
+  preMessageContainer: {
+    marginTop: 20,
+    padding: 15,
+    backgroundColor: "#f0f8ff",
+    borderRadius: 10,
+    borderLeftWidth: 4,
+    borderLeftColor: "#4CAF50",
+    width: "90%",
+  },
+  preMessageLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#555",
+    marginBottom: 5,
+  },
+  preMessageText: {
+    fontSize: 16,
+    color: "#333",
+    fontStyle: "italic",
+  },
+  chatButton: {
+    position: "absolute",
+    bottom: 30,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#007AFF",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 25,
+    gap: 8,
+  },
+  chatButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 25,
+    width: "85%",
+    maxWidth: 400,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#333",
+    marginBottom: 10,
+    textAlign: "center",
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: "#666",
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  messageInput: {
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 10,
+    padding: 15,
+    fontSize: 16,
+    minHeight: 100,
+    textAlignVertical: "top",
+    color: "#333",
+  },
+  charCount: {
+    fontSize: 12,
+    color: "#999",
+    textAlign: "right",
+    marginTop: 5,
+    marginBottom: 15,
+  },
+  modalButtons: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  cancelButton: {
+    backgroundColor: "#f0f0f0",
+  },
+  cancelButtonText: {
+    color: "#666",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  sendButton: {
+    backgroundColor: "#007AFF",
+  },
+  sendButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
   },
   noProfilesAvailable: {
     justifyContent: "center",

@@ -61,15 +61,35 @@ const Register = () => {
 
   const handleRegister = async () => {
     try {
+      // Log old token before clearing
+      const oldToken = await AsyncStorage.getItem("accessToken");
+      console.log(
+        "🔓 Old token before register:",
+        oldToken ? oldToken.substring(0, 20) + "..." : "none"
+      );
+
       const response = await api.post("/api/v1/users/register", {
         name: formData.name,
         mobileNumber: formData.mobileNumber,
         userType: userType,
       });
-      console.log(response.data);
+      console.log("📝 Register response:", response.data);
+
       if (response.status === 201) {
-        await AsyncStorage.setItem("accessToken", response.data.accessToken);
+        // CRITICAL: Clear old token before saving new one
+        await AsyncStorage.removeItem("accessToken");
+        await AsyncStorage.removeItem("isSignedIn");
+        console.log("🗑️ Old credentials cleared");
+
+        const newToken = response.data.accessToken;
+        console.log(
+          "🔐 New token (first 20 chars):",
+          newToken.substring(0, 20) + "..."
+        );
+        await AsyncStorage.setItem("accessToken", newToken);
+
         await signIn();
+        console.log("✅ Registration complete, navigating to tabs");
         navigation.replace("/(tabs)");
       }
     } catch (error) {

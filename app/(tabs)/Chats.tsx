@@ -26,8 +26,6 @@ const Chats = () => {
     }, [])
   );
 
-  console.log("👥 Current matches in Chats screen:", matches);
-
   const handleChatPress = (match: any) => {
     setCurrentChatUser(match);
     // @ts-ignore - Dynamic route navigation
