@@ -46,7 +46,8 @@ const Chats = () => {
           {matches.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Text style={[styles.emptyText, { color: colors.icon }]}>
-                No matches yet. Keep swiping!
+                No listeners matched yet. Explore and connect with listeners to start
+                ranting!
               </Text>
             </View>
           ) : (

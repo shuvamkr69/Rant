@@ -1,10 +1,13 @@
 import { useAuth } from "@/components/contexts/authContext";
 import { api } from "@/components/utils/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   BackHandler,
+  Dimensions,
+  Image,
   Platform,
   StyleSheet,
   Text,
@@ -63,33 +66,20 @@ const Register = () => {
     try {
       // Log old token before clearing
       const oldToken = await AsyncStorage.getItem("accessToken");
-      console.log(
-        "🔓 Old token before register:",
-        oldToken ? oldToken.substring(0, 20) + "..." : "none"
-      );
 
       const response = await api.post("/api/v1/users/register", {
         name: formData.name,
         mobileNumber: formData.mobileNumber,
         userType: userType,
       });
-      console.log("📝 Register response:", response.data);
 
       if (response.status === 201) {
-        // CRITICAL: Clear old token before saving new one
         await AsyncStorage.removeItem("accessToken");
         await AsyncStorage.removeItem("isSignedIn");
-        console.log("🗑️ Old credentials cleared");
-
         const newToken = response.data.accessToken;
-        console.log(
-          "🔐 New token (first 20 chars):",
-          newToken.substring(0, 20) + "..."
-        );
         await AsyncStorage.setItem("accessToken", newToken);
 
         await signIn();
-        console.log("✅ Registration complete, navigating to tabs");
         navigation.replace("/(tabs)");
       }
     } catch (error) {
@@ -100,78 +90,100 @@ const Register = () => {
   return (
     <SafeAreaProvider>
       <View style={styles.registerPage}>
-        <Text style={styles.headingText}>Register</Text>
-
-        <View style={styles.userTypeContainer}>
-          <View style={styles.userTypeSelector}>
-            <Animated.View
-              style={[styles.selectionIndicator, animatedIndicatorStyle]}
-            />
-
-            <TouchableOpacity
-              style={styles.userTypeOption}
-              onPress={() => handleUserTypeSelection("User")}
-              activeOpacity={0.7}
-            >
-              <Text
-                style={[
-                  styles.userTypeText,
-                  userType === "User" && styles.userTypeTextActive,
-                ]}
-              >
-                User
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.userTypeOption}
-              onPress={() => handleUserTypeSelection("Listener")}
-              activeOpacity={0.7}
-            >
-              <Text
-                style={[
-                  styles.userTypeText,
-                  userType === "Listener" && styles.userTypeTextActive,
-                ]}
-              >
-                Listener
-              </Text>
-            </TouchableOpacity>
-          </View>
+        <View style={styles.topImageContainer}>
+          <Image
+            source={require("@/assets/images/RegisterLoginScreenTopImage.png")}
+            style={styles.topImage}
+            resizeMode="cover"
+          />
+          <LinearGradient
+            colors={["transparent", "rgba(0,0,0,0.7)", "#000000"]}
+            style={styles.gradient}
+            locations={[0, 0.7, 1]}
+          />
         </View>
 
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter Your Full Name"
-            placeholderTextColor={"#adadadff"}
-            onChangeText={(value) => setFormData({ ...formData, name: value })}
-          ></TextInput>
-          <View>
+        {/* Content */}
+        <View style={styles.contentContainer}>
+          <Text style={styles.headingText}>Register</Text>
+
+          <View style={styles.userTypeContainer}>
+            <View style={styles.userTypeSelector}>
+              <Animated.View
+                style={[styles.selectionIndicator, animatedIndicatorStyle]}
+              />
+
+              <TouchableOpacity
+                style={styles.userTypeOption}
+                onPress={() => handleUserTypeSelection("User")}
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[
+                    styles.userTypeText,
+                    userType === "User" && styles.userTypeTextActive,
+                  ]}
+                >
+                  User
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.userTypeOption}
+                onPress={() => handleUserTypeSelection("Listener")}
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[
+                    styles.userTypeText,
+                    userType === "Listener" && styles.userTypeTextActive,
+                  ]}
+                >
+                  Listener
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={styles.inputContainer}>
             <TextInput
               style={styles.input}
-              placeholder="Enter Your Mobile Number"
+              placeholder="Enter Your Full Name"
               placeholderTextColor={"#adadadff"}
               onChangeText={(value) =>
-                setFormData({ ...formData, mobileNumber: value })
+                setFormData({ ...formData, name: value })
               }
-            />
+            ></TextInput>
+            <View>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter Your Mobile Number"
+                placeholderTextColor={"#adadadff"}
+                onChangeText={(value) =>
+                  setFormData({ ...formData, mobileNumber: value })
+                }
+              />
+            </View>
           </View>
+          <TouchableOpacity
+            style={styles.registerButton}
+            activeOpacity={0.9}
+            onPress={handleRegister}
+          >
+            <Text style={styles.registerButtonText}>Register</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={() => navigation.navigate("/Login")}
+          >
+            <View style={styles.goToLoginScreenContainer}>
+              <Text style={styles.alreadyHaveAccountText}>
+                Already have an account?{" "}
+              </Text>
+              <Text style={styles.goToLoginScreen}>Login in</Text>
+            </View>
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity
-          style={styles.registerButton}
-          activeOpacity={0.9}
-          onPress={handleRegister}
-        >
-          <Text style={styles.registerButtonText}>Register</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.registerButton}
-          activeOpacity={0.9}
-          onPress={() => navigation.navigate("/Login")}
-        >
-          <Text style={styles.registerButtonText}>Login Screen</Text>
-        </TouchableOpacity>
       </View>
     </SafeAreaProvider>
   );
@@ -180,12 +192,37 @@ const Register = () => {
 const styles = StyleSheet.create({
   registerPage: {
     flex: 1,
+    backgroundColor: "#000000",
+  },
+  topImageContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: Dimensions.get("window").height * 0.4, // 40% of screen height
+    zIndex: 0,
+  },
+  topImage: {
+    width: "100%",
+    height: "100%",
+  },
+  gradient: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: "50%",
+  },
+  contentContainer: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    zIndex: 1,
   },
   headingText: {
-    fontSize: 30,
-    fontWeight: "600",
+    fontSize: 40,
+    fontWeight: "900",
+    letterSpacing: 2,
     color: "#ffffffff",
     marginBottom: 30,
   },
@@ -225,14 +262,12 @@ const styles = StyleSheet.create({
     color: "#000000",
   },
   inputContainer: {
-    borderWidth: 2,
-    borderColor: "#ffffff",
     gap: 30,
     padding: 20,
     borderRadius: 15,
   },
   input: {
-    width: 300,
+    minWidth: "100%",
     height: 50,
     padding: 10,
     color: "#ffffff",
@@ -242,7 +277,8 @@ const styles = StyleSheet.create({
   },
   registerButton: {
     marginTop: 30,
-    padding: 15,
+    paddingVertical: 15,
+    width: "90%",
     backgroundColor: "#ffffff",
     borderRadius: 15,
   },
@@ -250,7 +286,26 @@ const styles = StyleSheet.create({
     color: "#000000",
     fontWeight: "600",
     fontSize: 18,
+    textAlign: "center",
   },
+  goToLoginScreenContainer:{
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 20,
+  },
+  alreadyHaveAccountText:{
+    color: "#ffffffff",
+    fontWeight: "400",
+    fontSize: 14,
+    textAlign: "center",
+  },
+  goToLoginScreen:{
+    color: "#ff0000ff",
+    fontWeight: "400",
+    fontSize: 14,
+    textAlign: "center",
+  }
 });
 
 export default Register;

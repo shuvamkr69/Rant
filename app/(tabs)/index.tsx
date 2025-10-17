@@ -227,8 +227,7 @@ export default function HomeScreen() {
               Send a message to {selectedProfile?.name}
             </Text>
             <Text style={styles.modalSubtitle}>
-              Send one message before matching. They'll see it when viewing your
-              profile.
+              Send an introductory message. Please wait for the listener to accept.
             </Text>
 
             <TextInput

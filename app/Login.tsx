@@ -1,9 +1,12 @@
 import { useAuth } from "@/components/contexts/authContext";
 import { api } from "@/components/utils/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
+  Dimensions,
+  Image,
   StyleSheet,
   Text,
   TextInput,
@@ -21,14 +24,8 @@ const Login = () => {
 
   const handleClearToken = async () => {
     try {
-      const oldToken = await AsyncStorage.getItem("accessToken");
-      console.log(
-        "🗑️ Clearing token:",
-        oldToken ? oldToken.substring(0, 20) + "..." : "none"
-      );
       await AsyncStorage.removeItem("accessToken");
       await AsyncStorage.removeItem("isSignedIn");
-      console.log("✅ Token AND isSignedIn cleared successfully");
       alert("Token cleared! Please restart the app or login fresh.");
     } catch (error) {
       console.error("❌ Error clearing token:", error);
@@ -38,82 +35,78 @@ const Login = () => {
 
   const handleLogin = async () => {
     try {
-      // Log old token before clearing
-      const oldToken = await AsyncStorage.getItem("accessToken");
-      console.log(
-        "🔓 Old token before login:",
-        oldToken ? oldToken.substring(0, 20) + "..." : "none"
-      );
-
       const response = await api.post("/api/v1/users/login", {
         mobileNumber: formData.mobileNumber,
       });
-      console.log("📱 Login response:", response.data);
 
       if (response.status === 200) {
-        // Clear old token first
         await AsyncStorage.removeItem("accessToken");
         await AsyncStorage.removeItem("isSignedIn");
-        console.log("🗑️ Old credentials cleared");
 
-        // Save new token
         const newToken = response.data.accessToken;
-        console.log(
-          "🔐 New token (first 20 chars):",
-          newToken.substring(0, 20) + "..."
-        );
         await AsyncStorage.setItem("accessToken", newToken);
 
-        await signIn(); // This will set isSignedIn to true and store it
-        console.log("✅ Login complete, navigating to tabs");
+        await signIn(); 
         navigation.replace("/(tabs)");
       }
     } catch (error) {
-      console.log("The login has failed ", error);
     }
   };
   return (
     <SafeAreaProvider>
       <View style={styles.loginPage}>
-        <Text style={styles.headingText}>Login</Text>
-        <View style={styles.inputContainer}>
-          <View>
-            <TextInput
-              style={styles.input}
-              placeholder="Your Mobile Number"
-              placeholderTextColor={"#adadadff"}
-              onChangeText={(value) =>
-                setFormData({ ...formData, mobileNumber: value })
-              }
-            ></TextInput>
+        <View style={styles.topImageContainer}>
+          <Image
+            source={require("@/assets/images/RegisterLoginScreenTopImage.png")}
+            style={styles.topImage}
+            resizeMode="cover"
+          />
+          <LinearGradient
+            colors={["transparent", "rgba(0,0,0,0.7)", "#000000"]}
+            style={styles.gradient}
+            locations={[0, 0.7, 1]}
+          />
+        </View>
+
+        <View style={styles.contentContainer}>
+          <Text style={styles.headingText}>Login</Text>
+          
+          <View style={styles.inputContainer}>
+            <View>
+              <TextInput
+                style={styles.input}
+                placeholder="Your Mobile Number"
+                placeholderTextColor={"#adadadff"}
+                onChangeText={(value) =>
+                  setFormData({ ...formData, mobileNumber: value })
+                }
+                keyboardType="numeric"
+              ></TextInput>
+            </View>
           </View>
-        </View>
-        <View>
-          <TouchableOpacity
-            style={styles.loginButton}
-            activeOpacity={0.9}
-            onPress={handleLogin}
-          >
-            <Text style={{ color: "black", fontWeight: "bold", fontSize: 20 }}>
-              Login
-            </Text>
-          </TouchableOpacity>
-        </View>
+          
+          <View>
+            <TouchableOpacity
+              style={styles.loginButton}
+              activeOpacity={0.9}
+              onPress={handleLogin}
+            >
+              <Text style={styles.loginButtonText}>
+                Login
+              </Text>
+            </TouchableOpacity>
+          </View>
 
-        {/* Clear Token Button */}
-        <View>
           <TouchableOpacity
-            style={styles.clearTokenButton}
             activeOpacity={0.9}
-            onPress={handleClearToken}
+            onPress={() => navigation.replace("/Register")}
           >
-            <Text style={styles.clearTokenText}>🗑️ Clear Cached Token</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View>
-          <TouchableOpacity onPress={() => navigation.replace("/Register")}>
-            <Text style={styles.registerText}>Register page</Text>
+            <View style={styles.goToRegisterScreenContainer}>
+              <Text style={styles.dontHaveAccountText}>
+                Don't have an account?{" "}
+              </Text>
+              <Text style={styles.goToRegisterScreen}>Register</Text>
+            </View>
           </TouchableOpacity>
         </View>
       </View>
@@ -124,56 +117,84 @@ const Login = () => {
 const styles = StyleSheet.create({
   loginPage: {
     flex: 1,
+    backgroundColor: "#000000",
+  },
+  topImageContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: Dimensions.get("window").height * 0.4,
+    zIndex: 0,
+  },
+  topImage: {
+    width: "100%",
+    height: "100%",
+  },
+  gradient: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: "50%",
+  },
+  contentContainer: {
+    flex: 1,
+    justifyContent: "center",
     alignItems: "center",
+    zIndex: 1,
   },
   headingText: {
-    color: "white",
-    fontSize: 30,
-    fontWeight: "bold",
-    marginTop: 100,
+    fontSize: 40,
+    fontWeight: "900",
+    letterSpacing: 2,
+    color: "#ffffffff",
+    marginBottom: 30,
   },
   inputContainer: {
-    borderWidth: 2,
-    borderRadius: 15,
-    borderColor: "white",
-    padding: 20,
-    marginTop: 50,
     gap: 30,
+    padding: 20,
+    borderRadius: 15,
   },
   input: {
-    borderWidth: 1,
-    borderRadius: 10,
-    borderColor: "white",
+    minWidth: 300,
     height: 50,
-    width: 300,
-    paddingLeft: 10,
-    color: "white",
+    padding: 10,
+    color: "#ffffff",
+    borderWidth: 1,
+    borderColor: "#ffffff",
+    borderRadius: 15,
   },
   loginButton: {
-    backgroundColor: "#ffffff",
-    padding: 15,
-    borderRadius: 10,
     marginTop: 30,
-  },
-  clearTokenButton: {
-    backgroundColor: "transparent",
-    borderWidth: 2,
-    borderColor: "#ff6b6b",
-    padding: 12,
-    borderRadius: 10,
-    marginTop: 15,
-    minWidth: 200,
+    paddingVertical: 15,
+    width: 340,
+    backgroundColor: "#ffffff",
+    borderRadius: 15,
     alignItems: "center",
   },
-  clearTokenText: {
-    color: "#ff6b6b",
+  loginButtonText: {
+    color: "#000000",
     fontWeight: "600",
-    fontSize: 14,
+    fontSize: 18,
   },
-  registerText: {
-    color: "white",
+  goToRegisterScreenContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 20,
+  },
+  dontHaveAccountText: {
+    color: "#ffffffff",
+    fontWeight: "400",
     fontSize: 14,
-    marginTop: 15,
+    textAlign: "center",
+  },
+  goToRegisterScreen: {
+    color: "#ff0000ff",
+    fontWeight: "400",
+    fontSize: 14,
+    textAlign: "center",
   },
 });
 
