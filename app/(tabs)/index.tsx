@@ -1,5 +1,7 @@
+import { useTheme } from "@/components/contexts/ThemeContext";
 import TopBar from "@/components/resuables/TopBar";
 import { api } from "@/components/utils/api";
+import { Colors } from "@/constants/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
@@ -19,6 +21,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 export default function HomeScreen() {
+  const { colorScheme } = useTheme();
+  const colors = Colors[colorScheme];
   const [profiles, setProfiles] = useState<Array<any>>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentUserType, setCurrentUserType] = useState<string>("");
@@ -129,7 +133,7 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <TopBar />
       <View style={styles.HomeScreen}>
         {profiles.length > 0 ? (
@@ -138,8 +142,8 @@ export default function HomeScreen() {
             renderCard={(card) => {
               if (!card) {
                 return (
-                  <View style={styles.card}>
-                    <Text style={styles.profileCardText}>No more profiles</Text>
+                  <View style={[styles.card, { backgroundColor: colors.background, borderColor: colors.icon }]}>
+                    <Text style={[styles.profileCardText, { color: colors.text }]}>No more profiles</Text>
                   </View>
                 );
               }
@@ -153,18 +157,18 @@ export default function HomeScreen() {
                 currentUserType === "Listener" && card.preMatchMessage;
 
               return (
-                <View style={styles.card}>
-                  <Text style={styles.profileCardText}>
+                <View style={[styles.card, { backgroundColor: colors.background, borderColor: colors.icon }]}>
+                  <Text style={[styles.profileCardText, { color: colors.text }]}>
                     {card.name || card.username || "Unknown"}
                   </Text>
 
                   {/* Show pre-match message if Listener is viewing User's card */}
                   {hasPreMessage && (
-                    <View style={styles.preMessageContainer}>
-                      <Text style={styles.preMessageLabel}>
+                    <View style={[styles.preMessageContainer, { backgroundColor: colorScheme === 'dark' ? '#0f1a1f' : '#f0f8ff', borderLeftColor: colors.tint }]}>
+                      <Text style={[styles.preMessageLabel, { color: colors.icon }]}>
                         Message from this user:
                       </Text>
-                      <Text style={styles.preMessageText}>
+                      <Text style={[styles.preMessageText, { color: colors.text }]}>
                         {card.preMatchMessage}
                       </Text>
                     </View>
@@ -173,13 +177,13 @@ export default function HomeScreen() {
                   {/* Show chat button if User is viewing Listener */}
                   {canSendPreMessage && (
                     <TouchableOpacity
-                      style={styles.chatButton}
+                      style={[styles.chatButton, { backgroundColor: colors.background, borderColor: colors.icon }]}
                       onPress={() => handleChatPress(card)}
                     >
                       <Ionicons
                         name="chatbubble-outline"
                         size={30}
-                        color="#0059ffff"
+                        color={colors.tint}
                       />
                     </TouchableOpacity>
                   )}
@@ -209,7 +213,7 @@ export default function HomeScreen() {
           />
         ) : (
           <View style={styles.noProfilesAvailable}>
-            <Text style={styles.noProfilesText}>No profiles available</Text>
+            <Text style={[styles.noProfilesText, { color: colors.icon }]}>No profiles available</Text>
           </View>
         )}
       </View>
@@ -222,25 +226,25 @@ export default function HomeScreen() {
         onRequestClose={() => setShowMessageModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>
+          <View style={[styles.modalContent, { backgroundColor: colors.background, borderColor: colors.icon, borderWidth: 1 }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
               Send a message to {selectedProfile?.name}
             </Text>
-            <Text style={styles.modalSubtitle}>
+            <Text style={[styles.modalSubtitle, { color: colors.icon }]}>
               Send an introductory message. Please wait for the listener to accept.
             </Text>
 
             <TextInput
-              style={styles.messageInput}
+              style={[styles.messageInput, { color: colors.text, borderColor: colors.icon }]}
               placeholder="Type your message..."
-              placeholderTextColor="#999"
+              placeholderTextColor={colors.icon}
               multiline
               maxLength={200}
               value={preMatchMessage}
               onChangeText={setPreMatchMessage}
             />
 
-            <Text style={styles.charCount}>{preMatchMessage.length}/200</Text>
+            <Text style={[styles.charCount, { color: colors.icon }]}>{preMatchMessage.length}/200</Text>
 
             <View style={styles.modalButtons}>
               <TouchableOpacity
@@ -250,14 +254,14 @@ export default function HomeScreen() {
                   setPreMatchMessage("");
                 }}
               >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
+                <Text style={[styles.cancelButtonText, { color: colors.icon }]}>Cancel</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.modalButton, styles.sendButton]}
+                style={[styles.modalButton, styles.sendButton, { backgroundColor: colors.tint }]}
                 onPress={handleSendMessageAndSwipeRight}
               >
-                <Text style={styles.sendButtonText}>Send & Like</Text>
+                <Text style={[styles.sendButtonText, { color: colorScheme === 'dark' ? '#000' : '#fff' }]}>Send & Like</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -270,6 +274,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#7f7f7fff",
   },
   HomeScreen: {
     flex: 1,

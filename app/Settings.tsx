@@ -91,7 +91,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 12,
     backgroundColor: "rgba(128, 128, 128, 0.1)",
-    marginBottom: 12,
+    marginTop: 20,
+    marginBottom: 8,
   },
   settingTextContainer: {
     flex: 1,
@@ -108,11 +109,11 @@ const styles = StyleSheet.create({
   loginButton: {
     marginTop: 30,
     padding: 15,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#ff4444ff",
     borderRadius: 15,
   },
   loginButtonText: {
-    color: "#000000",
+    color: "#ffffffff",
     fontWeight: "600",
     fontSize: 18,
   },

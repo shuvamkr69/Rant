@@ -1,3 +1,5 @@
+import { useTheme } from "@/components/contexts/ThemeContext";
+import { Colors } from "@/constants/theme";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useNavigation } from "expo-router";
 import React from "react";
@@ -8,7 +10,8 @@ type screenName = {
 }
 
 const BackButton = (props: screenName) => {
-
+  const { colorScheme } = useTheme();
+  const colors = Colors[colorScheme];
   const navigation = useNavigation();
 
   const handleBackPress = () => {
@@ -18,9 +21,9 @@ const BackButton = (props: screenName) => {
     <View>
       <View style = {styles.BackButton}>
         <TouchableOpacity onPress={handleBackPress}>
-          <Ionicons name="arrow-back" size={26} color="white" />
+          <Ionicons name="arrow-back" size={26} color={colors.text} />
         </TouchableOpacity>
-        <Text style = {styles.BackButtonText}>{props.screenName}</Text>
+        <Text style = {[styles.BackButtonText, { color: colors.text }]}>{props.screenName}</Text>
       </View>
     </View>
   );

@@ -18,6 +18,12 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 const Login = () => {
   const navigation = useRouter();
   const { signIn } = useAuth();
+   const colors = {
+     background: "#000000",
+     text: "#ffffff",
+     icon: "#adadadff",
+     tint: "#ff0000ff"
+   };
   const [formData, setFormData] = useState({
     mobileNumber: "",
   });
@@ -54,7 +60,7 @@ const Login = () => {
   };
   return (
     <SafeAreaProvider>
-      <View style={styles.loginPage}>
+  <View style={[styles.loginPage, { backgroundColor: colors.background }]}>
         <View style={styles.topImageContainer}>
           <Image
             source={require("@/assets/images/RegisterLoginScreenTopImage.png")}
@@ -69,14 +75,14 @@ const Login = () => {
         </View>
 
         <View style={styles.contentContainer}>
-          <Text style={styles.headingText}>Login</Text>
+          <Text style={[styles.headingText, { color: colors.text }]}>Login</Text>
           
           <View style={styles.inputContainer}>
             <View>
               <TextInput
-                style={styles.input}
+                  style={styles.input}
                 placeholder="Your Mobile Number"
-                placeholderTextColor={"#adadadff"}
+                  placeholderTextColor={"#adadadff"}
                 onChangeText={(value) =>
                   setFormData({ ...formData, mobileNumber: value })
                 }
@@ -87,11 +93,11 @@ const Login = () => {
           
           <View>
             <TouchableOpacity
-              style={styles.loginButton}
+                style={styles.loginButton}
               activeOpacity={0.9}
               onPress={handleLogin}
             >
-              <Text style={styles.loginButtonText}>
+                <Text style={styles.loginButtonText}>
                 Login
               </Text>
             </TouchableOpacity>
@@ -102,10 +108,10 @@ const Login = () => {
             onPress={() => navigation.replace("/Register")}
           >
             <View style={styles.goToRegisterScreenContainer}>
-              <Text style={styles.dontHaveAccountText}>
+                <Text style={styles.dontHaveAccountText}>
                 Don't have an account?{" "}
               </Text>
-              <Text style={styles.goToRegisterScreen}>Register</Text>
+                <Text style={styles.goToRegisterScreen}>Register</Text>
             </View>
           </TouchableOpacity>
         </View>

@@ -1,3 +1,5 @@
+import { useTheme } from "@/components/contexts/ThemeContext";
+import { Colors } from "@/constants/theme";
 import { RootStackParamList } from "@/types/navigation";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { NavigationProp } from "@react-navigation/native";
@@ -7,27 +9,30 @@ import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 
 const TopBar = () => {
+  const navigate = useNavigation<NavigationProp<RootStackParamList>>();
+  const { colorScheme } = useTheme();
+  const colors = Colors[colorScheme];
 
-    const navigate = useNavigation<NavigationProp<RootStackParamList>>();
+  const navigateToSettings = () => {
+    navigate.navigate("Settings");
+  };
 
-    const navigateToSettings = () => {
-        navigate.navigate("Settings")
-        console.log("Navigating to Settings");
-    }
-    return ( 
-    <View style={styles.TopBar}>
-        <View style = {styles.logoContainer}>
-            <Image source={require("../../assets/images/icons/logo.png")} style={{ width: 30, height: 30 }} />
-            <Text style = {styles.logoText}>Rant</Text>
-        </View>
-        <View style ={styles.sideIconContainer}>
-            <TouchableOpacity onPress={navigateToSettings}>
-                <Ionicons name="cog-outline" size={26} color="black" />
-            </TouchableOpacity>
-            
-        </View>
+  return (
+    <View style={[styles.TopBar, { backgroundColor: colors.background }] }>
+      <View style={styles.logoContainer}>
+        <Image
+          source={require("../../assets/images/icons/logo.png")}
+          style={{ width: 30, height: 30 }}
+        />
+        <Text style={[styles.logoText, { color: colors.text }]}>Rant</Text>
+      </View>
+      <View style={styles.sideIconContainer}>
+        <TouchableOpacity onPress={navigateToSettings}>
+          <Ionicons name="cog-outline" size={26} color={colors.text} />
+        </TouchableOpacity>
+      </View>
     </View>
-    );
+  );
 };
 
 const styles = StyleSheet.create({
@@ -38,7 +43,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 15,
-    backgroundColor: "white",
     zIndex: 100,
   },
   logoContainer: {
@@ -47,7 +51,6 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   logoText: {
-    color: "black",
     fontSize: 20,
     fontWeight: "bold",
   },

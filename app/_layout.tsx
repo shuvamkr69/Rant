@@ -7,10 +7,11 @@ import {
   ThemeProvider as NavigationThemeProvider,
 } from "@react-navigation/native";
 import { BlurView } from "expo-blur";
+import * as NavigationBar from "expo-navigation-bar";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useState } from "react";
-import { StyleSheet } from "react-native";
+import { Platform, StyleSheet } from "react-native";
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -84,6 +85,23 @@ function RootNavigator() {
   const { isSignedIn, isLoading } = useAuth();
   const [showBlur, setShowBlur] = useState(false);
   const [prevIsSignedIn, setPrevIsSignedIn] = useState(isSignedIn);
+
+  // Ensure Android system bars are black and readable
+  useEffect(() => {
+    const applyAndroidSystemBars = async () => {
+      if (Platform.OS !== "android") return;
+      try {
+        await NavigationBar.setBackgroundColorAsync("#000000");
+        await NavigationBar.setButtonStyleAsync("light");
+        await NavigationBar.setVisibilityAsync("visible");
+        // Prevent content under nav bar by using inset behavior
+        await NavigationBar.setBehaviorAsync("inset-swipe");
+      } catch (e) {
+        // no-op: best effort
+      }
+    };
+    applyAndroidSystemBars();
+  }, []);
 
   // Trigger blur effect on authentication state change
   useEffect(() => {
@@ -181,7 +199,12 @@ function RootNavigator() {
       )}
 
       <BlurTransitionOverlay isVisible={showBlur} />
-      <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
+      <StatusBar
+        style="light"
+        backgroundColor="#000000"
+        translucent={false}
+        hidden={false}
+      />
     </NavigationThemeProvider>
   );
 }

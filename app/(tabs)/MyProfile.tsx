@@ -1,11 +1,15 @@
+import { useTheme } from "@/components/contexts/ThemeContext";
 import TopBar from "@/components/resuables/TopBar";
 import { api } from "@/components/utils/api";
+import { Colors } from "@/constants/theme";
 import { useFocusEffect } from "expo-router";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function MyProfile() {
+  const { colorScheme } = useTheme();
+  const colors = Colors[colorScheme];
   const [userProfileData, setUserProfileData] = useState<any>(null);
   const fetchMyProfile = async () => {
     try {
@@ -24,15 +28,15 @@ export default function MyProfile() {
     fetchMyProfile();
   });
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <TopBar />
       <View style={styles.myProfilePage}>
-        <View style={styles.imageContainer}>
+        <View style={[styles.imageContainer, { backgroundColor: colors.icon }]}>
           <View style={styles.profileImage}></View>
         </View>
-        <View style={styles.detailsContainer}>
-          <Text style={styles.detailHeading}>{userProfileData?.name}</Text>
-          <Text style={styles.detailHeading}>{userProfileData?.userType}</Text>
+        <View style={[styles.detailsContainer, { backgroundColor: colors.background }]}>
+          <Text style={[styles.detailHeading, { color: colors.text }]}>{userProfileData?.name}</Text>
+          <Text style={[styles.detailHeading, { color: colors.icon }]}>{userProfileData?.userType}</Text>
         </View>
       </View>
     </SafeAreaView>

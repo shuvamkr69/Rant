@@ -3,17 +3,17 @@ import { useTheme } from "@/components/contexts/ThemeContext";
 import { api } from "@/components/utils/api";
 import { Colors } from "@/constants/theme";
 import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    FlatList,
+    KeyboardAvoidingView,
+    Platform,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -107,14 +107,14 @@ export default function ChatScreen() {
           style={[
             styles.messageBubble,
             {
-              backgroundColor: isMyMessage ? colors.tint : "#E8E8E8",
+              backgroundColor: isMyMessage ? colors.tint : (colorScheme === 'dark' ? '#222' : '#E8E8E8'),
             },
           ]}
         >
           <Text
             style={[
               styles.messageText,
-              { color: isMyMessage ? "#000000ff" : "#ffffffff" },
+              { color: isMyMessage ? (colorScheme === 'dark' ? '#000' : '#000') : (colorScheme === 'dark' ? '#fff' : '#000') },
             ]}
           >
             {item.message}
@@ -124,8 +124,8 @@ export default function ChatScreen() {
               styles.messageTime,
               {
                 color: isMyMessage
-                  ? "rgba(255,255,255,0.7)"
-                  : "rgba(0,0,0,0.5)",
+                  ? (colorScheme === 'dark' ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.6)')
+                  : (colorScheme === 'dark' ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)'),
               },
             ]}
           >
@@ -219,10 +219,10 @@ export default function ChatScreen() {
           <TextInput
             style={[
               styles.input,
-              { backgroundColor: "#E8E8E8", color: "#000000" },
+              { backgroundColor: colorScheme === 'dark' ? '#222' : '#E8E8E8', color: colors.text },
             ]}
             placeholder={isPending ? "Chat is pending..." : "Type a message..."}
-            placeholderTextColor="#999"
+            placeholderTextColor={colors.icon}
             value={inputMessage}
             onChangeText={handleTyping}
             multiline
@@ -237,7 +237,7 @@ export default function ChatScreen() {
             onPress={handleSend}
             disabled={isPending || !inputMessage.trim()}
           >
-            <Ionicons name="send" size={20} color="#000000ff" />
+            <Ionicons name="send" size={20} color={colorScheme === 'dark' ? '#000' : '#000'} />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

@@ -56,7 +56,7 @@ const Chats = () => {
               keyExtractor={(item) => item._id}
               renderItem={({ item }) => (
                 <TouchableOpacity
-                  style={[styles.card, { backgroundColor: colors.background }]}
+                  style={[styles.card, { backgroundColor: colors.background, borderColor: colors.icon }]}
                   onPress={() => handleChatPress(item)}
                   activeOpacity={0.7}
                 >
