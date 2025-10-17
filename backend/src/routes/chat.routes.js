@@ -9,10 +9,10 @@ import { verifyJWT } from "../middlewares/auth.middleware.js";
 
 const chatRouter = Router();
 
-// All routes require authentication - they will be prefixed with /chat by main router
-chatRouter.get("/chat/fetchMatches", verifyJWT, getMatches);
-chatRouter.get("/chat/history/:otherUserId", verifyJWT, getChatHistory);
-chatRouter.post("/chat/send", verifyJWT, sendMessage);
-chatRouter.get("/chat/unread-count", verifyJWT, getUnreadCount);
+// All routes require authentication - they are prefixed with /api/v1/users in app.js
+chatRouter.get("/fetchMatches", verifyJWT, getMatches);
+chatRouter.get("/history/:otherUserId", verifyJWT, getChatHistory);
+chatRouter.post("/send", verifyJWT, sendMessage);
+chatRouter.get("/unread-count", verifyJWT, getUnreadCount);
 
 export { chatRouter };

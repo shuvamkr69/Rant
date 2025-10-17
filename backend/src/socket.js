@@ -23,11 +23,19 @@ export const initializeSocket = (server) => {
         return next(new Error("Authentication error: No token provided"));
       }
 
+      console.log(
+        "🔐 Socket auth - Token (first 20 chars):",
+        token.substring(0, 20) + "..."
+      );
+
       const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+      console.log("🔓 Socket auth - Decoded user ID:", decoded._id);
+      console.log("🔓 Socket auth - Full decoded:", decoded);
+
       socket.userId = decoded._id;
       next();
     } catch (error) {
-      console.error("Socket authentication error:", error);
+      console.error("❌ Socket authentication error:", error.message);
       next(new Error("Authentication error"));
     }
   });
@@ -49,15 +57,20 @@ export const initializeSocket = (server) => {
         const senderId = userId;
 
         console.log(`💬 Message from ${senderId} to ${receiverId}:`, message);
+        console.log(`📊 SenderId type:`, typeof senderId, senderId);
+        console.log(`📊 ReceiverId type:`, typeof receiverId, receiverId);
 
-        // Verify they are matched
+        // Verify they are matched - pass IDs as-is, verifyMatch will handle conversion
         const isMatched = await verifyMatch(senderId, receiverId);
         if (!isMatched) {
+          console.log("❌ Match verification failed!");
           socket.emit("error", {
             message: "You are not matched with this user",
           });
           return;
         }
+
+        console.log("✅ Match verified, saving message...");
 
         // Save message to database
         const newMessage = await Message.create({
@@ -139,6 +152,18 @@ export const initializeSocket = (server) => {
 
 // Helper function to verify if two users are matched
 const verifyMatch = async (userId1, userId2) => {
+  console.log("🔍 Verifying match between:", userId1, "and", userId2);
+  console.log("🔍 userId1 type:", typeof userId1);
+  console.log("🔍 userId2 type:", typeof userId2);
+
+  // Normalize IDs - convert to string for consistent comparison
+  const id1String = userId1.toString();
+  const id2String = userId2.toString();
+
+  console.log("🔍 Normalized id1:", id1String);
+  console.log("🔍 Normalized id2:", id2String);
+
+  // Query using the original values (Mongoose handles ObjectId conversion)
   const user1AcceptedUser2 = await Profile.findOne({
     userId: userId1,
     otherUserId: userId2,
@@ -151,7 +176,45 @@ const verifyMatch = async (userId1, userId2) => {
     Status: "accepted",
   });
 
-  return user1AcceptedUser2 && user2AcceptedUser1;
+  console.log("🔍 User1 accepted User2:", !!user1AcceptedUser2);
+  if (user1AcceptedUser2) {
+    console.log("   ✓ Found record:", {
+      _id: user1AcceptedUser2._id,
+      userId: user1AcceptedUser2.userId.toString(),
+      otherUserId: user1AcceptedUser2.otherUserId.toString(),
+      Status: user1AcceptedUser2.Status,
+    });
+  }
+
+  console.log("🔍 User2 accepted User1:", !!user2AcceptedUser1);
+  if (user2AcceptedUser1) {
+    console.log("   ✓ Found record:", {
+      _id: user2AcceptedUser1._id,
+      userId: user2AcceptedUser1.userId.toString(),
+      otherUserId: user2AcceptedUser1.otherUserId.toString(),
+      Status: user2AcceptedUser1.Status,
+    });
+  }
+
+  const isMatched = !!(user1AcceptedUser2 && user2AcceptedUser1);
+  console.log("🔍 Final match result:", isMatched);
+
+  // If not matched, dump all profiles for debugging
+  if (!isMatched) {
+    console.log("⚠️ Match failed! Dumping all accepted profiles:");
+    const allAccepted = await Profile.find({ Status: "accepted" }).select(
+      "userId otherUserId Status"
+    );
+    allAccepted.forEach((p, i) => {
+      console.log(
+        `   ${i + 1}. userId: ${p.userId} -> otherUserId: ${
+          p.otherUserId
+        } (Status: ${p.Status})`
+      );
+    });
+  }
+
+  return isMatched;
 };
 
 export const getIO = () => {

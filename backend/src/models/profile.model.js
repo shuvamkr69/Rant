@@ -13,6 +13,10 @@ const profileSchema = new mongoose.Schema(
       required: true,
     },
     Status: { type: String, enum: ["accepted", "rejected"], required: true },
+    preMatchMessage: {
+      type: String,
+      default: null,
+    }, // Message sent before mutual match (only for Users to Listeners)
   },
   { timestamps: true }
 );

@@ -40,12 +40,33 @@ export const getMatches = async (req, res) => {
 export const getChatHistory = async (req, res) => {
   try {
     const userId = req.user._id;
+    const currentUser = req.user;
     const { otherUserId } = req.params;
 
     console.log("💬 Fetching chat history:", userId, "<->", otherUserId);
 
     const isMatched = await verifyMatch(userId, otherUserId);
+
+    // Special case: User swiped right on Listener but Listener hasn't accepted yet
     if (!isMatched) {
+      // Check if current user is a "User" who has accepted the "Listener"
+      const userAcceptedListener = await Profile.findOne({
+        userId: userId,
+        otherUserId: otherUserId,
+        Status: "accepted",
+      });
+
+      if (currentUser.userType === "User" && userAcceptedListener) {
+        // User has swiped right on Listener, but no mutual match yet
+        console.log("⏳ User waiting for Listener to accept");
+        return res.status(200).json({
+          messages: [],
+          isPending: true,
+          message: "The listener has not yet accepted the chat invite",
+        });
+      }
+
+      // Otherwise, no relationship at all
       return res
         .status(403)
         .json({ message: "You are not matched with this user" });
@@ -67,7 +88,7 @@ export const getChatHistory = async (req, res) => {
       { isRead: true }
     );
 
-    res.status(200).json({ messages });
+    res.status(200).json({ messages, isPending: false });
   } catch (error) {
     console.error("❌ Error fetching chat history:", error);
     res.status(500).json({ message: "Server error", error: error.message });
@@ -108,6 +129,9 @@ export const sendMessage = async (req, res) => {
 };
 
 const verifyMatch = async (userId1, userId2) => {
+  console.log("🔍 [HTTP] Verifying match between:", userId1, "and", userId2);
+
+  // Query using the original values (Mongoose handles ObjectId conversion automatically)
   const user1AcceptedUser2 = await Profile.findOne({
     userId: userId1,
     otherUserId: userId2,
@@ -120,7 +144,10 @@ const verifyMatch = async (userId1, userId2) => {
     Status: "accepted",
   });
 
-  return user1AcceptedUser2 && user2AcceptedUser1;
+  console.log("🔍 [HTTP] User1 accepted User2:", !!user1AcceptedUser2);
+  console.log("🔍 [HTTP] User2 accepted User1:", !!user2AcceptedUser1);
+
+  return !!(user1AcceptedUser2 && user2AcceptedUser1);
 };
 
 export const getUnreadCount = async (req, res) => {
