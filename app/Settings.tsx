@@ -1,4 +1,6 @@
+import { useAuth } from "@/components/contexts/authContext";
 import BackButton from "@/components/resuables/BackButton";
+import { api } from "@/components/utils/api";
 import { Colors } from "@/constants/theme";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useRouter } from "expo-router";
@@ -9,12 +11,28 @@ import { SafeAreaView } from "react-native-safe-area-context";
 const Settings = () => {
   const navigation = useRouter();
   const { colorScheme, themeMode, setThemeMode } = useTheme();
+  const { signOut } = useAuth();
   const colors = Colors[colorScheme];
 
   const isDarkMode = colorScheme === "dark";
 
   const handleThemeToggle = (value: boolean) => {
     setThemeMode(value ? "dark" : "light");
+  };
+
+  const handleLogout = async () => {
+    try {
+      const response = await api.post("/api/v1/users/logout");
+      if (response.status === 200) {
+        console.log("Logged out successfully");
+      }
+    } catch (error) {
+      console.log("Logout API error:", error);
+    } finally {
+      // Always sign out locally regardless of API response
+      await signOut();
+      navigation.replace("/Login");
+    }
   };
 
   return (
@@ -42,9 +60,9 @@ const Settings = () => {
         <TouchableOpacity
           style={styles.loginButton}
           activeOpacity={0.9}
-          onPress={() => navigation.navigate("/Login")}
+          onPress={() => handleLogout()}
         >
-          <Text style={styles.loginButtonText}>Login Screen</Text>
+          <Text style={styles.loginButtonText}>Logout</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

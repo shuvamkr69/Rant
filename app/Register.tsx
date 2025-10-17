@@ -1,40 +1,75 @@
+import { useAuth } from "@/components/contexts/authContext";
 import { api } from "@/components/utils/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  BackHandler,
+  Platform,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 const Register = () => {
   const navigation = useRouter();
-  const [isSignedIn, setIsSignedIn] = useState(false);
+  const { signIn } = useAuth();
+  const [userType, setUserType] = useState<"User" | "Listener">("User");
   const [formData, setFormData] = useState({
+    userType: userType,
     name: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
+    mobileNumber: "",
   });
+
+  useEffect(() => {
+    if (Platform.OS === "android") {
+      const backHandler = BackHandler.addEventListener(
+        "hardwareBackPress",
+        () => {
+          BackHandler.exitApp();
+          return true;
+        }
+      );
+
+      return () => backHandler.remove();
+    }
+  }, []);
+
+  const slideAnimation = useSharedValue(0);
+
+  const animatedIndicatorStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateX: slideAnimation.value }],
+    };
+  });
+
+  const handleUserTypeSelection = (type: "User" | "Listener") => {
+    setUserType(type);
+    slideAnimation.value = withSpring(type === "User" ? 0 : 150, {
+      damping: 100,
+      stiffness: 1500,
+    });
+  };
 
   const handleRegister = async () => {
     try {
       const response = await api.post("/api/v1/users/register", {
         name: formData.name,
-        email: formData.email,
-        password: formData.password,
+        mobileNumber: formData.mobileNumber,
+        userType: userType,
       });
       console.log(response.data);
       if (response.status === 201) {
-        AsyncStorage.setItem("isSignedIn", "true");
-        setIsSignedIn(true);
-        AsyncStorage.setItem("accessToken", response.data.accessToken);
-      }
-      if (isSignedIn) {
+        await AsyncStorage.setItem("accessToken", response.data.accessToken);
+        await signIn();
         navigation.replace("/(tabs)");
       }
     } catch (error) {
@@ -46,35 +81,62 @@ const Register = () => {
     <SafeAreaProvider>
       <View style={styles.registerPage}>
         <Text style={styles.headingText}>Register</Text>
+
+        <View style={styles.userTypeContainer}>
+          <View style={styles.userTypeSelector}>
+            <Animated.View
+              style={[styles.selectionIndicator, animatedIndicatorStyle]}
+            />
+
+            <TouchableOpacity
+              style={styles.userTypeOption}
+              onPress={() => handleUserTypeSelection("User")}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.userTypeText,
+                  userType === "User" && styles.userTypeTextActive,
+                ]}
+              >
+                User
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.userTypeOption}
+              onPress={() => handleUserTypeSelection("Listener")}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.userTypeText,
+                  userType === "Listener" && styles.userTypeTextActive,
+                ]}
+              >
+                Listener
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.input}
-            placeholder="Enter Your Name"
+            placeholder="Enter Your Full Name"
             placeholderTextColor={"#adadadff"}
             onChangeText={(value) => setFormData({ ...formData, name: value })}
           ></TextInput>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter Your Email"
-            placeholderTextColor={"#adadadff"}
-            onChangeText={(value) => setFormData({ ...formData, email: value })}
-          ></TextInput>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter Your Password"
-            placeholderTextColor={"#adadadff"}
-            onChangeText={(value) =>
-              setFormData({ ...formData, password: value })
-            }
-          ></TextInput>
-          <TextInput
-            style={styles.input}
-            placeholder="Confirm Your Password"
-            placeholderTextColor={"#adadadff"}
-            onChangeText={(value) =>
-              setFormData({ ...formData, confirmPassword: value })
-            }
-          ></TextInput>
+          <View>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter Your Mobile Number"
+              placeholderTextColor={"#adadadff"}
+              onChangeText={(value) =>
+                setFormData({ ...formData, mobileNumber: value })
+              }
+            />
+          </View>
         </View>
         <TouchableOpacity
           style={styles.registerButton}
@@ -105,7 +167,42 @@ const styles = StyleSheet.create({
     fontSize: 30,
     fontWeight: "600",
     color: "#ffffffff",
-    marginBottom: 50,
+    marginBottom: 30,
+  },
+  userTypeContainer: {
+    marginBottom: 40,
+    width: 300,
+  },
+  userTypeSelector: {
+    flexDirection: "row",
+    backgroundColor: "#333333",
+    borderRadius: 25,
+    padding: 4,
+    position: "relative",
+    height: 50,
+  },
+  selectionIndicator: {
+    position: "absolute",
+    width: 150,
+    height: 42,
+    backgroundColor: "#ffffff",
+    borderRadius: 21,
+    top: 4,
+    left: 4,
+  },
+  userTypeOption: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 1,
+  },
+  userTypeText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#999999",
+  },
+  userTypeTextActive: {
+    color: "#000000",
   },
   inputContainer: {
     borderWidth: 2,

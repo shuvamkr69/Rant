@@ -5,6 +5,7 @@ const backend_url = process.env.EXPO_PUBLIC_BACKEND_URL;
 
 export const api = axios.create({
     baseURL: backend_url,
+    timeout: 10000,
     headers: {
         'Content-Type': 'application/json',
     }

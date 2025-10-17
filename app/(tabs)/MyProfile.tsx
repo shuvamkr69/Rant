@@ -1,13 +1,41 @@
 import TopBar from "@/components/resuables/TopBar";
-import { StyleSheet, View } from "react-native";
+import { api } from "@/components/utils/api";
+import { useFocusEffect } from "expo-router";
+import { useState } from "react";
+import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function MyProfile() {
+  const [userProfileData, setUserProfileData] = useState<any>(null);
+  const fetchMyProfile = async () => {
+    try {
+      const response = await api.get("/api/v1/users/myProfile");
+      if (!response.data) {
+        console.log("No profile data found");
+        return;
+      }
+      setUserProfileData(response.data);
+    } catch (error) {
+      console.log("Error fetching my profile:", error);
+    }
+  };
+
+  useFocusEffect(() => {
+    fetchMyProfile();
+  });
   return (
     <SafeAreaView style={styles.container}>
       <TopBar />
       <View style={styles.myProfilePage}>
-        
+        <View style={styles.imageContainer}></View>
+        <View style={styles.detailsContainer}>
+          <Text style={styles.detailHeading}>
+            Name: {userProfileData?.name}
+          </Text>
+          <Text style={styles.detailHeading}>
+            Type: {userProfileData?.userType}
+          </Text>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -22,5 +50,21 @@ const styles = StyleSheet.create({
   myProfilePage: {
     flex: 1,
     width: "100%",
+  },
+  imageContainer: {
+    width: "100%",
+    height: 300,
+    backgroundColor: "grey",
+  },
+  detailsContainer: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: "#f0f0f0",
+  },
+  detailHeading: {
+    fontSize: 24,
+    fontWeight: "bold",
+    marginBottom: 10,
+    color: "#333",
   },
 });
