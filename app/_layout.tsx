@@ -1,6 +1,6 @@
 import { AuthProvider, useAuth } from "@/components/contexts/authContext";
 import { ChatProvider } from "@/components/contexts/chatContext";
-import { ThemeProvider, useTheme } from "@/contexts/ThemeContext";
+import { ThemeProvider, useTheme } from "@/components/contexts/ThemeContext";
 import {
   DarkTheme,
   DefaultTheme,

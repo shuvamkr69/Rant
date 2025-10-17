@@ -27,14 +27,12 @@ export default function MyProfile() {
     <SafeAreaView style={styles.container}>
       <TopBar />
       <View style={styles.myProfilePage}>
-        <View style={styles.imageContainer}></View>
+        <View style={styles.imageContainer}>
+          <View style={styles.profileImage}></View>
+        </View>
         <View style={styles.detailsContainer}>
-          <Text style={styles.detailHeading}>
-            Name: {userProfileData?.name}
-          </Text>
-          <Text style={styles.detailHeading}>
-            Type: {userProfileData?.userType}
-          </Text>
+          <Text style={styles.detailHeading}>{userProfileData?.name}</Text>
+          <Text style={styles.detailHeading}>{userProfileData?.userType}</Text>
         </View>
       </View>
     </SafeAreaView>
@@ -59,12 +57,23 @@ const styles = StyleSheet.create({
   detailsContainer: {
     flex: 1,
     padding: 20,
-    backgroundColor: "#f0f0f0",
+    backgroundColor: "#707070ff",
+    alignItems: "center",
   },
   detailHeading: {
-    fontSize: 24,
+    fontSize: 34,
     fontWeight: "bold",
     marginBottom: 10,
     color: "#333",
+  },
+  profileImage: {
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    borderWidth: 4,
+    borderColor: "#fff",
+    backgroundColor: "#c4c4c4",
+    alignSelf: "center",
+    marginTop: 75,
   },
 });

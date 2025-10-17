@@ -1,8 +1,9 @@
 import { useChat } from "@/components/contexts/chatContext";
+import { useTheme } from "@/components/contexts/ThemeContext";
+import { api } from "@/components/utils/api";
 import { Colors } from "@/constants/theme";
-import { useTheme } from "@/contexts/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
   FlatList,
@@ -34,13 +35,28 @@ export default function ChatScreen() {
   const [inputMessage, setInputMessage] = useState("");
   const flatListRef = useRef<FlatList>(null);
   const typingTimeoutRef = useRef<any>(null);
+  const [myProfileData, setMyProfileData] = useState<any>(null);
 
+  const fetchMyInfo = async () => {
+    try {
+      const response = await api.get("/api/v1/users/myProfile");
+      if (!response.data) {
+        console.log("No profile data found");
+        return;
+      }
+      console.log("My profile data:", response.data);
+      setMyProfileData(response.data);
+    } catch (error) {}
+  };
   useEffect(() => {
     if (userId) {
       loadChatHistory(userId as string);
     }
   }, [userId]);
 
+  useEffect(() => {
+    fetchMyInfo();
+  }, []);
   useEffect(() => {
     // Scroll to bottom when new messages arrive
     if (messages.length > 0) {
@@ -123,6 +139,8 @@ export default function ChatScreen() {
     );
   };
 
+  
+
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background }]}
@@ -147,6 +165,9 @@ export default function ChatScreen() {
         <View style={styles.headerInfo}>
           <Text style={[styles.headerName, { color: colors.text }]}>
             {name}
+          </Text>
+          <Text style={styles.walletBalance}>
+            Balance: {myProfileData?.walletBalance}
           </Text>
           {isTyping && (
             <Text style={[styles.typingIndicator, { color: colors.icon }]}>
@@ -216,7 +237,7 @@ export default function ChatScreen() {
             onPress={handleSend}
             disabled={isPending || !inputMessage.trim()}
           >
-            <Ionicons name="send" size={20} color="#ffffff" />
+            <Ionicons name="send" size={20} color="#000000ff" />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -239,10 +260,17 @@ const styles = StyleSheet.create({
   },
   headerInfo: {
     flex: 1,
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   headerName: {
     fontSize: 18,
     fontWeight: "600",
+  },
+  walletBalance: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#ffffffff",
   },
   typingIndicator: {
     fontSize: 12,

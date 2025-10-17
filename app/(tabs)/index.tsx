@@ -152,22 +152,10 @@ export default function HomeScreen() {
               const hasPreMessage =
                 currentUserType === "Listener" && card.preMatchMessage;
 
-              console.log("🎴 Card rendering:", {
-                cardName: card.name,
-                cardUserType: card.userType,
-                currentUserType,
-                canSendPreMessage,
-                hasPreMessage,
-                preMatchMessage: card.preMatchMessage,
-              });
-
               return (
                 <View style={styles.card}>
                   <Text style={styles.profileCardText}>
                     {card.name || card.username || "Unknown"}
-                  </Text>
-                  <Text style={styles.profileDetails}>
-                    User Type: {card.userType || "N/A"}
                   </Text>
 
                   {/* Show pre-match message if Listener is viewing User's card */}
@@ -190,10 +178,9 @@ export default function HomeScreen() {
                     >
                       <Ionicons
                         name="chatbubble-outline"
-                        size={24}
-                        color="#fff"
+                        size={30}
+                        color="#0059ffff"
                       />
-                      <Text style={styles.chatButtonText}>Send Message</Text>
                     </TouchableOpacity>
                   )}
                 </View>
@@ -298,18 +285,17 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 2,
     borderColor: "#E8E8E8",
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: "flex-end",
+    // alignItems: "flex-end",
     backgroundColor: "white",
     padding: 20,
   },
   profileCardText: {
-    textAlign: "center",
+    textAlign: "left",
     fontSize: 32,
     fontWeight: "bold",
     color: "black",
     backgroundColor: "transparent",
-    marginBottom: 10,
   },
   profileBio: {
     textAlign: "center",
@@ -317,12 +303,6 @@ const styles = StyleSheet.create({
     color: "#666",
     marginTop: 10,
     paddingHorizontal: 20,
-  },
-  profileDetails: {
-    textAlign: "center",
-    fontSize: 16,
-    color: "#999",
-    marginTop: 5,
   },
   preMessageContainer: {
     marginTop: 20,
@@ -346,12 +326,10 @@ const styles = StyleSheet.create({
   },
   chatButton: {
     position: "absolute",
-    bottom: 30,
+    bottom: 20,
+    right: 20,
     flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#007AFF",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    backgroundColor: "#ffffffff",
     borderRadius: 25,
     gap: 8,
   },

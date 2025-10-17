@@ -25,7 +25,7 @@ const MyWallet = () => {
   return (
     <SafeAreaView>
       <TopBar />
-      <View>
+      <View style={styles.container}>
         <ImageBackground
           source={require("../../assets/images/icons/money.png")} // Replace with your image source
           style={styles.imageBackground}
@@ -53,6 +53,9 @@ const styles = StyleSheet.create({
     textAlign: "center",
     top: "50%",
     right: "20%",
+  },
+  container: {
+    flex: 1,
   },
 });
 

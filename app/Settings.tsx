@@ -1,8 +1,8 @@
 import { useAuth } from "@/components/contexts/authContext";
+import { useTheme } from "@/components/contexts/ThemeContext";
 import BackButton from "@/components/resuables/BackButton";
 import { api } from "@/components/utils/api";
 import { Colors } from "@/constants/theme";
-import { useTheme } from "@/contexts/ThemeContext";
 import { useRouter } from "expo-router";
 import React from "react";
 import { StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";

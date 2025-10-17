@@ -1,7 +1,7 @@
 import { useChat } from "@/components/contexts/chatContext";
+import { useTheme } from "@/components/contexts/ThemeContext";
 import TopBar from "@/components/resuables/TopBar";
 import { Colors } from "@/constants/theme";
-import { useTheme } from "@/contexts/ThemeContext";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback } from "react";
 import {
@@ -40,7 +40,7 @@ const Chats = () => {
       <View style={styles.chatsContainer}>
         <View style={styles.cardsContainer}>
           <Text style={[styles.headingText, { color: colors.text }]}>
-            Your Matches ({matches.length})
+            Chats
           </Text>
 
           {matches.length === 0 ? (
