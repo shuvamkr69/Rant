@@ -6,14 +6,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
-    FlatList,
-    KeyboardAvoidingView,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -39,14 +39,11 @@ export default function ChatScreen() {
 
   const fetchMyInfo = async () => {
     try {
-      const response = await api.get("/api/v1/users/myProfile");
-      if (!response.data) {
-        console.log("No profile data found");
-        return;
-      }
-      console.log("My profile data:", response.data);
-      setMyProfileData(response.data);
-    } catch (error) {}
+      const response = await api.get("/api/v1/users/getBalance");
+      setMyProfileData({ walletBalance: response.data.walletBalance });
+    } catch (error) {
+      setMyProfileData({ walletBalance: 0 });
+    }
   };
   useEffect(() => {
     if (userId) {

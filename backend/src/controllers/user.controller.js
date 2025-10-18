@@ -1,5 +1,26 @@
+import { ListenerStats } from "../models/listenerStat.model.js";
 import { User } from "../models/user.model.js";
+import { UserStats } from "../models/userStats.model.js";
 import { ApiError } from "../utils/apiError.js";
+
+// Fetch stats for the current user (for MyProfile)
+export const fetchUserStats = async (req, res) => {
+  const userId = req.user._id;
+  const user = await User.findById(userId);
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
+  }
+  let stats = null;
+  if (user.userType === "Listener") {
+    stats = await ListenerStats.findOne({ userId });
+  } else {
+    stats = await UserStats.findOne({ userId });
+  }
+  if (!stats) {
+    return res.status(404).json({ message: "Stats not found" });
+  }
+  res.status(200).json({ userType: user.userType, stats });
+};
 export const registerUser = async (req, res) => {
   const { name, mobileNumber, userType } = req.body;
 
@@ -17,6 +38,14 @@ export const registerUser = async (req, res) => {
     mobileNumber,
     userType: userType || "User", // Use provided userType or default to "User"
   });
+
+  // Create stats document for the new user
+  if ((userType || "User") === "Listener") {
+    await ListenerStats.create({ userId: newUser._id });
+  } else {
+    await UserStats.create({ userId: newUser._id });
+  }
+
   const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
     newUser._id
   );
@@ -53,11 +82,15 @@ export const loginUser = async (req, res) => {
 
 export const fetchWalletBalance = async (req, res) => {
   const userId = req.user._id;
-  const user = await User.findById(userId);
-  if (!user) {
-    return res.status(404).json({ message: "User not found" });
+  // Try to find stats for User or Listener
+  let stats = await UserStats.findOne({ userId });
+  if (!stats) {
+    stats = await ListenerStats.findOne({ userId });
   }
-  res.status(200).json({ walletBalance: user.walletBalance });
+  if (!stats) {
+    return res.status(404).json({ message: "Stats not found" });
+  }
+  res.status(200).json({ walletBalance: stats.walletBalance });
 };
 
 const generateAccessAndRefreshTokens = async (userId) => {

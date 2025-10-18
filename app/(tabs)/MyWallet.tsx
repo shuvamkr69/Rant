@@ -29,10 +29,13 @@ const MyWallet = () => {
   const fetchBalance = async () => {
     try {
       const response = await api.get("/api/v1/users/getBalance");
+      // Now expects walletBalance from stats, not user
       if (response.status === 200) {
         setWalletBalance(response.data.walletBalance);
       }
-    } catch (error) {}
+    } catch (error) {
+      setWalletBalance(0); // fallback if error
+    }
   };
 
   useFocusEffect(() => {
@@ -79,7 +82,7 @@ const MyWallet = () => {
               resizeMode="contain"
             />
             <View style={styles.balanceOnCard} pointerEvents="none">
-              <Text style={[styles.balanceCardText, { color: '#ebeb2cff' }]}> 
+              <Text style={[styles.balanceCardText, { color: '#d1a73cff' }]}> 
                 {walletBalance !== null ? `${walletBalance}` : '0'}
               </Text>
             </View>
@@ -155,9 +158,10 @@ const styles = StyleSheet.create({
     fontSize: 44,
     fontWeight: 'bold',
     letterSpacing: 1.5,
-    color: '#bfa14a',
-    textShadowColor: '#ffe100ff',
-    textShadowRadius: 2,
+    color: '#ffbf00ff',
+    textShadowColor: '#000',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 4,
   },
   buySection: {
     width: '100%',
