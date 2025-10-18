@@ -19,17 +19,17 @@ const TopBar = () => {
 
   return (
     <View style={[styles.TopBar, { backgroundColor: colors.background }] }>
-      <View style={styles.logoContainer}>
-        <Image
-          source={require("../../assets/images/icons/logo.png")}
-          style={{ width: 30, height: 30 }}
-        />
-        <Text style={[styles.logoText, { color: colors.text }]}>Rant</Text>
-      </View>
       <View style={styles.sideIconContainer}>
         <TouchableOpacity onPress={navigateToSettings}>
           <Ionicons name="cog-outline" size={26} color={colors.text} />
         </TouchableOpacity>
+      </View>
+      <View style={styles.logoContainer}>
+        <Image
+          source={require("../../assets/images/icons/logo.png")}
+          style={{ width: 50, height: 50 }}
+        />
+        <Text style={[styles.logoText, { color: colors.text }]}>Rant</Text>
       </View>
     </View>
   );
@@ -41,7 +41,7 @@ const styles = StyleSheet.create({
     width: "100%",
     height: 60,
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "center",
     paddingHorizontal: 15,
     zIndex: 100,
   },
@@ -51,14 +51,15 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   logoText: {
-    fontSize: 20,
+    fontSize: 25,
     fontWeight: "bold",
   },
   sideIconContainer: {
+    position: "absolute",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 10,
-
+    left: 20,
   }
 });
 
