@@ -44,12 +44,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = async () => {
     try {
+      console.log("🔓 Signing out - Removing tokens from storage");
       await AsyncStorage.removeItem("isSignedIn");
       await AsyncStorage.removeItem("accessToken");
       setIsSignedIn(false);
       setUser(null);
+      console.log("✅ Sign out complete - All tokens removed");
     } catch (error) {
-      console.error("Error signing out:", error);
+      console.error("❌ Error signing out:", error);
     }
   };
 

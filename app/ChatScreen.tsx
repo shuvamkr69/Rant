@@ -20,6 +20,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 export default function ChatScreen() {
   const { userId, name } = useLocalSearchParams();
   const {
+    socket,
     messages,
     sendMessage,
     loadChatHistory,
@@ -46,10 +47,25 @@ export default function ChatScreen() {
     }
   };
   useEffect(() => {
-    if (userId) {
+    if (userId && socket) {
       loadChatHistory(userId as string);
+      
+      // Join the room for session tracking
+      console.log(`🚪 Joining room with user ${userId}`);
+      socket.emit("join_room", { otherUserId: userId });
+      
+      // Listen for room_joined confirmation
+      socket.once("room_joined", (data: any) => {
+        console.log(`✅ Room joined successfully:`, data);
+      });
+
+      // Cleanup function - leave room when component unmounts
+      return () => {
+        console.log(`👋 Leaving room with user ${userId}`);
+        socket.emit("leave_room", { otherUserId: userId });
+      };
     }
-  }, [userId]);
+  }, [userId, socket]);
 
   useEffect(() => {
     fetchMyInfo();

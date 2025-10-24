@@ -4,9 +4,9 @@ import { api } from "@/components/utils/api";
 import { Colors } from "@/constants/theme";
 import { useFocusEffect } from "expo-router";
 import React, { useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Svg, { Rect, Text as SvgText, Line } from 'react-native-svg';
+import Svg, { Line, Rect, Text as SvgText } from 'react-native-svg';
 
 export default function MyProfile() {
   const { colorScheme } = useTheme();
@@ -14,6 +14,7 @@ export default function MyProfile() {
   const [userProfileData, setUserProfileData] = useState<any>(null);
   const [userStats, setUserStats] = useState<any>(null);
   const [userType, setUserType] = useState<string>("");
+  const [refreshing, setRefreshing] = useState(false);
 
   const fetchMyProfile = async () => {
     try {
@@ -31,6 +32,12 @@ export default function MyProfile() {
     }
   };
 
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchMyProfile();
+    setRefreshing(false);
+  };
+
   useFocusEffect(() => {
     fetchMyProfile();
   });
@@ -40,17 +47,17 @@ export default function MyProfile() {
   if (userStats) {
     if (userType === "Listener") {
       chartData = [
-        { label: "Listened", value: userStats.messagesListened },
-        { label: "Sessions", value: userStats.sessionsCount },
-        { label: "Time(min)", value: Math.round((userStats.timeSpentListening || 0) / 60) },
-        { label: "Balance", value: userStats.walletBalance },
+        { label: "Users", value: userStats.uniqueUsersListenedTo?.length || 0 },
+        { label: "Sessions", value: userStats.sessionsConducted || userStats.sessionsCount || 0 },
+        { label: "Time(min)", value: Math.round((userStats.totalChatTime || userStats.timeSpentListening || 0) / 60) },
+        { label: "Rating", value: userStats.averageRating || 0 },
       ];
     } else {
       chartData = [
         { label: "Sent", value: userStats.messagesSent },
         { label: "Received", value: userStats.messagesReceived },
-        { label: "Chats", value: userStats.chatsParticipated },
-        { label: "Balance", value: userStats.walletBalance },
+        { label: "Sessions", value: userStats.sessionsCompleted || 0 },
+        { label: "Time(min)", value: Math.round((userStats.totalSessionTime || 0) / 60) },
       ];
     }
   }
@@ -58,7 +65,17 @@ export default function MyProfile() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <TopBar />
-      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+      <ScrollView 
+        contentContainerStyle={{ paddingBottom: 40 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.tint}
+            colors={[colors.tint]}
+          />
+        }
+      >
         <View style={styles.myProfilePage}>
           <View style={[styles.imageContainer, { backgroundColor: colors.icon }]}>
             <View style={styles.profileImage}></View>

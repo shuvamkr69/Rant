@@ -5,6 +5,8 @@ const userStatsSchema = new mongoose.Schema({
 	messagesSent: { type: Number, default: 0 },
 	messagesReceived: { type: Number, default: 0 },
 	chatsParticipated: { type: Number, default: 0 },
+	totalSessionTime: { type: Number, default: 0 }, // in seconds
+	sessionsCompleted: { type: Number, default: 0 },
 	walletBalance: { type: Number, default: 0 },
 }, { timestamps: true });
 

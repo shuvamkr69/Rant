@@ -1,4 +1,5 @@
 import { useAuth } from "@/components/contexts/authContext";
+import { useChat } from "@/components/contexts/chatContext";
 import { useTheme } from "@/components/contexts/ThemeContext";
 import BackButton from "@/components/resuables/BackButton";
 import { api } from "@/components/utils/api";
@@ -12,6 +13,7 @@ const Settings = () => {
   const navigation = useRouter();
   const { colorScheme, themeMode, setThemeMode } = useTheme();
   const { signOut } = useAuth();
+  const { socket } = useChat();
   const colors = Colors[colorScheme];
 
   const isDarkMode = colorScheme === "dark";
@@ -22,15 +24,29 @@ const Settings = () => {
 
   const handleLogout = async () => {
     try {
+      console.log("🔓 Logout button pressed - Starting logout process");
+      
+      // Disconnect socket first
+      if (socket) {
+        console.log("🔌 Disconnecting socket on logout");
+        socket.disconnect();
+      }
+
+      // Call backend logout endpoint (backend will log the user ID)
       const response = await api.post("/api/v1/users/logout");
       if (response.status === 200) {
-        console.log("Logged out successfully");
+        console.log("✅ Logged out successfully from backend");
+        console.log("✅ Response:", response.data);
       }
-    } catch (error) {
-      console.log("Logout API error:", error);
+    } catch (error: any) {
+      console.log("⚠️ Logout API error:", error);
+      if (error.response) {
+        console.log("⚠️ Error response:", error.response.data);
+      }
     } finally {
       // Always sign out locally regardless of API response
       await signOut();
+      console.log("✅ Local auth state cleared");
       navigation.replace("/Login");
     }
   };

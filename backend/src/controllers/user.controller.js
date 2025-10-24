@@ -13,11 +13,18 @@ export const fetchUserStats = async (req, res) => {
   let stats = null;
   if (user.userType === "Listener") {
     stats = await ListenerStats.findOne({ userId });
+    // Create stats if they don't exist
+    if (!stats) {
+      stats = await ListenerStats.create({ userId });
+      console.log(`✅ Created new ListenerStats for ${userId}`);
+    }
   } else {
     stats = await UserStats.findOne({ userId });
-  }
-  if (!stats) {
-    return res.status(404).json({ message: "Stats not found" });
+    // Create stats if they don't exist
+    if (!stats) {
+      stats = await UserStats.create({ userId });
+      console.log(`✅ Created new UserStats for ${userId}`);
+    }
   }
   res.status(200).json({ userType: user.userType, stats });
 };
@@ -80,16 +87,61 @@ export const loginUser = async (req, res) => {
   });
 };
 
+export const logoutUser = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const userName = req.user.name;
+    const userType = req.user.userType;
+    
+    console.log(`🔓 LOGOUT REQUEST RECEIVED`);
+    console.log(`👤 User ID: ${userId}`);
+    console.log(`📛 User Name: ${userName}`);
+    console.log(`🏷️  User Type: ${userType}`);
+    
+    // Clear the refresh token from the database
+    await User.findByIdAndUpdate(
+      userId,
+      { $unset: { refreshToken: "" } },
+      { new: true }
+    );
+
+    console.log(`✅ User ${userId} (${userName}) logged out successfully - Refresh token cleared from DB`);
+
+    return res.status(200).json({
+      message: "Logged out successfully",
+      userId: userId.toString(),
+      userName,
+    });
+  } catch (error) {
+    console.error("❌ Logout error:", error);
+    return res.status(500).json({ message: "Failed to logout" });
+  }
+};
+
 export const fetchWalletBalance = async (req, res) => {
   const userId = req.user._id;
-  // Try to find stats for User or Listener
-  let stats = await UserStats.findOne({ userId });
-  if (!stats) {
+  const user = await User.findById(userId);
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
+  }
+  
+  let stats = null;
+  if (user.userType === "Listener") {
     stats = await ListenerStats.findOne({ userId });
+    // Create stats if they don't exist
+    if (!stats) {
+      stats = await ListenerStats.create({ userId });
+      console.log(`✅ Created new ListenerStats for ${userId}`);
+    }
+  } else {
+    stats = await UserStats.findOne({ userId });
+    // Create stats if they don't exist
+    if (!stats) {
+      stats = await UserStats.create({ userId });
+      console.log(`✅ Created new UserStats for ${userId}`);
+    }
   }
-  if (!stats) {
-    return res.status(404).json({ message: "Stats not found" });
-  }
+  
   res.status(200).json({ walletBalance: stats.walletBalance });
 };
 

@@ -29,10 +29,6 @@ export const fetchProfiles = async (req, res) => {
       userType: targetUserType, // "Listener"
     }).select("-refreshToken -__v -createdAt -updatedAt -mobileNumber");
 
-    console.log(
-      "✅ User fetching Listeners - Profiles found:",
-      profiles.length
-    );
   } else if (currentUserType === "Listener") {
     // Listeners can ONLY see Users who have already right-swiped (accepted) them
     // Find all Users who have accepted this Listener
@@ -77,10 +73,6 @@ export const fetchProfiles = async (req, res) => {
       }
     }
 
-    console.log(
-      "✅ Listener fetching Users who liked them - Profiles found:",
-      profiles.length
-    );
   }
 
   res.status(200).send(profiles);

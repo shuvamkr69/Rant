@@ -56,3 +56,17 @@ export const disconnectSocket = () => {
     console.log("🔌 Socket disconnected");
   }
 };
+
+export const joinRoom = (otherUserId: string) => {
+  if (socket?.connected) {
+    console.log(`🚪 Emitting join_room for user ${otherUserId}`);
+    socket.emit("join_room", { otherUserId });
+    
+    // Listen for room_joined confirmation
+    socket.once("room_joined", (data) => {
+      console.log(`✅ Room joined successfully:`, data);
+    });
+  } else {
+    console.error("❌ Socket not connected, cannot join room");
+  }
+};

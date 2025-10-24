@@ -1,3 +1,4 @@
+import { ListenerStats } from "../models/listenerStat.model.js";
 import { Message } from "../models/message.model.js";
 import { Profile } from "../models/profile.model.js";
 import { User } from "../models/user.model.js";
@@ -98,6 +99,7 @@ export const getChatHistory = async (req, res) => {
 export const sendMessage = async (req, res) => {
   try {
     const senderId = req.user._id;
+    const senderUser = req.user; // This contains the full user object from auth middleware
     const { receiverId, message } = req.body;
 
     if (!message || !message.trim()) {
@@ -117,6 +119,28 @@ export const sendMessage = async (req, res) => {
       message: message.trim(),
     });
 
+    // If sender is a Listener, check if this is their first message to this user
+    if (senderUser.userType === "Listener") {
+      let listenerStats = await ListenerStats.findOne({ userId: senderId });
+      
+      // Create stats if they don't exist
+      if (!listenerStats) {
+        listenerStats = await ListenerStats.create({ userId: senderId });
+      }
+      
+      // Check if this user is already in the uniqueUsersListenedTo array
+      const alreadyListened = listenerStats.uniqueUsersListenedTo.some(
+        (userId) => userId.toString() === receiverId.toString()
+      );
+
+      if (!alreadyListened) {
+        // This is the first message to this user, add them to the array
+        listenerStats.uniqueUsersListenedTo.push(receiverId);
+        await listenerStats.save();
+        console.log(`✅ Listener ${senderId} now listening to ${listenerStats.uniqueUsersListenedTo.length} unique users`);
+      }
+    }
+
     const populatedMessage = await Message.findById(newMessage._id)
       .populate("senderId", "name userType")
       .populate("receiverId", "name userType");
@@ -129,9 +153,7 @@ export const sendMessage = async (req, res) => {
 };
 
 const verifyMatch = async (userId1, userId2) => {
-  console.log("🔍 [HTTP] Verifying match between:", userId1, "and", userId2);
 
-  // Query using the original values (Mongoose handles ObjectId conversion automatically)
   const user1AcceptedUser2 = await Profile.findOne({
     userId: userId1,
     otherUserId: userId2,
@@ -143,9 +165,6 @@ const verifyMatch = async (userId1, userId2) => {
     otherUserId: userId1,
     Status: "accepted",
   });
-
-  console.log("🔍 [HTTP] User1 accepted User2:", !!user1AcceptedUser2);
-  console.log("🔍 [HTTP] User2 accepted User1:", !!user2AcceptedUser1);
 
   return !!(user1AcceptedUser2 && user2AcceptedUser1);
 };

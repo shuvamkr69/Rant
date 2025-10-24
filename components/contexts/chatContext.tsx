@@ -85,7 +85,9 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
         transports: ["websocket"],
       });
 
-      newSocket.on("connect", () => {});
+      newSocket.on("connect", () => {
+        console.log("✅ Socket connected in ChatContext:", newSocket.id);
+      });
 
       newSocket.on("receive_message", (message: Message) => {
         setMessages((prev) => [...prev, message]);
@@ -109,7 +111,16 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
         console.error("❌ Socket error:", error);
       });
 
+      newSocket.on("disconnect", (reason: string) => {
+        console.log("❌ Socket disconnected in ChatContext:", reason);
+      });
+
+      newSocket.on("connect_error", (error: any) => {
+        console.error("❌ Socket connection error:", error.message);
+      });
+
       setSocket(newSocket);
+      console.log("🔌 Socket instance set in context");
     } catch (error) {
       console.error("❌ Failed to initialize socket:", error);
     }
