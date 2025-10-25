@@ -64,7 +64,7 @@ export const getMySessionHistory = async (req, res) => {
         page: parseInt(page),
         limit: parseInt(limit),
         total,
-        pages: Math.ceil(total / parseInt(limit)),
+        pages: Math.floor(total / parseInt(limit)),
       },
     });
   } catch (error) {

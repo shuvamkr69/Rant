@@ -56,12 +56,10 @@ export default function ChatScreen() {
       
       // Listen for room_joined confirmation
       socket.once("room_joined", (data: any) => {
-        console.log(`✅ Room joined successfully:`, data);
       });
 
       // Cleanup function - leave room when component unmounts
       return () => {
-        console.log(`👋 Leaving room with user ${userId}`);
         socket.emit("leave_room", { otherUserId: userId });
       };
     }

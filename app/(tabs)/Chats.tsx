@@ -21,7 +21,6 @@ const Chats = () => {
 
   useFocusEffect(
     useCallback(() => {
-      console.log("🔄 Chats screen focused, loading matches...");
       loadMatches();
     }, [])
   );

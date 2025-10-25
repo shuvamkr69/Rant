@@ -64,7 +64,6 @@ export const joinRoom = (otherUserId: string) => {
     
     // Listen for room_joined confirmation
     socket.once("room_joined", (data) => {
-      console.log(`✅ Room joined successfully:`, data);
     });
   } else {
     console.error("❌ Socket not connected, cannot join room");

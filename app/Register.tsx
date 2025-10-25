@@ -1,5 +1,4 @@
 import { useAuth } from "@/components/contexts/authContext";
-import { api } from "@/components/utils/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -64,26 +63,18 @@ const Register = () => {
 
   const handleRegister = async () => {
     try {
-      // Log old token before clearing
-      const oldToken = await AsyncStorage.getItem("accessToken");
+      await AsyncStorage.setItem("userType", formData.userType);
+      await AsyncStorage.setItem("name", formData.name);
+      await AsyncStorage.setItem("mobileNumber", formData.mobileNumber);
 
-      const response = await api.post("/api/v1/users/register", {
-        name: formData.name,
-        mobileNumber: formData.mobileNumber,
-        userType: userType,
-      });
-
-      if (response.status === 201) {
-        await AsyncStorage.removeItem("accessToken");
-        await AsyncStorage.removeItem("isSignedIn");
-        const newToken = response.data.accessToken;
-        await AsyncStorage.setItem("accessToken", newToken);
-
-        await signIn();
-        navigation.replace("/(tabs)");
+      if(userType === "User") {
+        navigation.push("/UserDetailScreen");
+      } else {
+        navigation.push("/ListenerDetailScreen");
       }
     } catch (error) {
-      console.log("The registeration has failed ", error);
+      console.log("Error saving registration data:", error);
+      return;
     }
   };
 
@@ -158,10 +149,12 @@ const Register = () => {
               <TextInput
                 style={styles.input}
                 placeholder="Enter Your Mobile Number"
+                keyboardType="numeric"
                 placeholderTextColor={"#adadadff"}
                 onChangeText={(value) =>
                   setFormData({ ...formData, mobileNumber: value })
                 }
+                
               />
             </View>
           </View>
@@ -174,7 +167,7 @@ const Register = () => {
           </TouchableOpacity>
           <TouchableOpacity
             activeOpacity={0.9}
-            onPress={() => navigation.navigate("/Login")}
+            onPress={() => navigation.push("/Login")}
           >
             <View style={styles.goToLoginScreenContainer}>
               <Text style={styles.alreadyHaveAccountText}>
@@ -288,24 +281,24 @@ const styles = StyleSheet.create({
     fontSize: 18,
     textAlign: "center",
   },
-  goToLoginScreenContainer:{
+  goToLoginScreenContainer: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
     marginTop: 20,
   },
-  alreadyHaveAccountText:{
+  alreadyHaveAccountText: {
     color: "#ffffffff",
     fontWeight: "400",
     fontSize: 14,
     textAlign: "center",
   },
-  goToLoginScreen:{
+  goToLoginScreen: {
     color: "#ff0000ff",
     fontWeight: "400",
     fontSize: 14,
     textAlign: "center",
-  }
+  },
 });
 
 export default Register;

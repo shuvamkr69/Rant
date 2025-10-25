@@ -1,5 +1,3 @@
-import { useTheme } from "@/components/contexts/ThemeContext";
-import { Colors } from "@/constants/theme";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useNavigation } from "expo-router";
 import React from "react";
@@ -10,20 +8,19 @@ type screenName = {
 }
 
 const BackButton = (props: screenName) => {
-  const { colorScheme } = useTheme();
-  const colors = Colors[colorScheme];
+
   const navigation = useNavigation();
 
   const handleBackPress = () => {
     navigation.goBack();
   };
   return (
-    <View>
+    <View style={styles.container}>
       <View style = {styles.BackButton}>
         <TouchableOpacity onPress={handleBackPress}>
-          <Ionicons name="arrow-back" size={26} color={colors.text} />
+          <Ionicons name="arrow-back" size={26} color="#fff" />
         </TouchableOpacity>
-        <Text style = {[styles.BackButtonText, { color: colors.text }]}>{props.screenName}</Text>
+        <Text style = {[styles.BackButtonText, { color: "#fff" }]}>{props.screenName}</Text>
       </View>
     </View>
   );
@@ -32,8 +29,8 @@ const BackButton = (props: screenName) => {
 };
  const styles = StyleSheet.create({
     container : {
-        flex:1,
-        flexDirection: "row", 
+        backgroundColor: "#6b1fa8",
+        paddingVertical: 10,
     },
     BackButton : {
         marginTop: 10,  
@@ -42,7 +39,7 @@ const BackButton = (props: screenName) => {
         marginLeft: 10,
     },
     BackButtonText : {
-        color: "white",
+        color: "#fff",
         fontSize: 22,
         fontWeight: "bold",
         marginLeft: 10,

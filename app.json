@@ -22,12 +22,12 @@
       "predictiveBackGestureEnabled": false
     },
     "androidStatusBar": {
-      "backgroundColor": "#000000",
+      "backgroundColor": "#6b1fa8",
       "barStyle": "light-content",
       "translucent": false
     },
     "androidNavigationBar": {
-      "backgroundColor": "#000000",
+      "backgroundColor": "#6b1fa8",
       "barStyle": "light-content"
     },
     "web": {
@@ -42,9 +42,9 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
+          "backgroundColor": "#6b1fa8",
           "dark": {
-            "backgroundColor": "#000000"
+            "backgroundColor": "#6b1fa8"
           }
         }
       ]

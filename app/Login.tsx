@@ -28,17 +28,6 @@ const Login = () => {
     mobileNumber: "",
   });
 
-  const handleClearToken = async () => {
-    try {
-      await AsyncStorage.removeItem("accessToken");
-      await AsyncStorage.removeItem("isSignedIn");
-      alert("Token cleared! Please restart the app or login fresh.");
-    } catch (error) {
-      console.error("❌ Error clearing token:", error);
-      alert("Failed to clear token");
-    }
-  };
-
   const handleLogin = async () => {
     try {
       const response = await api.post("/api/v1/users/login", {

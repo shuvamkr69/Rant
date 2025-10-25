@@ -4,9 +4,8 @@ import { api } from "@/components/utils/api";
 import { Colors } from "@/constants/theme";
 import { useFocusEffect } from "expo-router";
 import React, { useState } from "react";
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Svg, { Line, Rect, Text as SvgText } from 'react-native-svg';
 
 export default function MyProfile() {
   const { colorScheme } = useTheme();
@@ -15,6 +14,7 @@ export default function MyProfile() {
   const [userStats, setUserStats] = useState<any>(null);
   const [userType, setUserType] = useState<string>("");
   const [refreshing, setRefreshing] = useState(false);
+  const [profileImage, setProfileImage] = useState<string | null>(null);
 
   const fetchMyProfile = async () => {
     try {
@@ -22,6 +22,7 @@ export default function MyProfile() {
       if (profileRes.data) {
         setUserProfileData(profileRes.data);
         setUserType(profileRes.data.userType);
+        setProfileImage(profileRes.data.profileImage);
       }
       const statsRes = await api.get("/api/v1/users/getStats");
       if (statsRes.data) {
@@ -78,7 +79,19 @@ export default function MyProfile() {
       >
         <View style={styles.myProfilePage}>
           <View style={[styles.imageContainer, { backgroundColor: colors.icon }]}>
-            <View style={styles.profileImage}></View>
+            <View style={styles.profileImage}>
+              {profileImage ? (
+                <Image 
+                  source={{ uri: profileImage }}
+                  style={styles.profileImageActual}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View style={styles.profileImagePlaceholder}>
+                  <Text style={styles.placeholderText}>No Image</Text>
+                </View>
+              )}
+            </View>
           </View>
           <View style={[styles.detailsContainer, { backgroundColor: colors.background }]}>
             <Text style={[styles.detailHeading, { color: colors.text }]}>{userProfileData?.name}</Text>
@@ -89,7 +102,7 @@ export default function MyProfile() {
         {/* Stats Section */}
         <View style={{ width: '100%', paddingHorizontal: 20, marginTop: 20 }}>
           <Text style={{ fontSize: 24, fontWeight: 'bold', color: colors.text, marginBottom: 20 }}>
-            📊 Your Stats
+            Your Stats
           </Text>
           {userStats && chartData.length > 0 ? (
             <View>
@@ -131,88 +144,7 @@ export default function MyProfile() {
                 })}
               </View>
 
-              {/* Bar Chart Visualization */}
-              <View style={{ 
-                backgroundColor: colorScheme === 'dark' ? '#1a1a2e' : '#f8f9fa',
-                borderRadius: 20,
-                padding: 20,
-                marginTop: 10,
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.1,
-                shadowRadius: 8,
-                elevation: 5,
-              }}>
-                <Text style={{ fontSize: 18, fontWeight: '600', color: colors.text, marginBottom: 15 }}>
-                  Overview
-                </Text>
-                <Svg height="220" width="100%">
-                  {chartData.map((item, index) => {
-                    const barColors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A'];
-                    const totalWidth = 320; // Approximate usable width
-                    const barWidth = (totalWidth / chartData.length) - 15;
-                    const maxValue = Math.max(...chartData.map(d => d.value), 1);
-                    const barHeight = (item.value / maxValue) * 140;
-                    const x = index * (barWidth + 15) + 10;
-                    const y = 160 - barHeight;
-                    
-                    return (
-                      <React.Fragment key={index}>
-                        {/* Glow effect */}
-                        <Rect
-                          x={x - 2}
-                          y={y - 2}
-                          width={barWidth + 4}
-                          height={barHeight + 4}
-                          fill={barColors[index % 4]}
-                          opacity={0.3}
-                          rx={8}
-                        />
-                        {/* Main Bar with gradient effect */}
-                        <Rect
-                          x={x}
-                          y={y}
-                          width={barWidth}
-                          height={barHeight}
-                          fill={barColors[index % 4]}
-                          rx={6}
-                        />
-                        {/* Value on top of bar */}
-                        <SvgText
-                          x={x + barWidth / 2}
-                          y={y - 8}
-                          fill={colors.text}
-                          fontSize="14"
-                          fontWeight="bold"
-                          textAnchor="middle"
-                        >
-                          {item.value}
-                        </SvgText>
-                        {/* Label below bar */}
-                        <SvgText
-                          x={x + barWidth / 2}
-                          y={180}
-                          fill={colors.text}
-                          fontSize="11"
-                          textAnchor="middle"
-                        >
-                          {item.label.length > 8 ? item.label.substring(0, 7) + '...' : item.label}
-                        </SvgText>
-                      </React.Fragment>
-                    );
-                  })}
-                  {/* Base line */}
-                  <Line
-                    x1="5"
-                    y1="160"
-                    x2="330"
-                    y2="160"
-                    stroke={colors.icon}
-                    strokeWidth="2"
-                    opacity={0.3}
-                  />
-                </Svg>
-              </View>
+              
             </View>
           ) : (
             <View style={{
@@ -267,5 +199,21 @@ const styles = StyleSheet.create({
     backgroundColor: "#c4c4c4",
     alignSelf: "center",
     marginTop: 75,
+    overflow: "hidden",
+  },
+  profileImageActual: {
+    width: "100%",
+    height: "100%",
+  },
+  profileImagePlaceholder: {
+    width: "100%",
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#e0e0e0",
+  },
+  placeholderText: {
+    color: "#999",
+    fontSize: 12,
   },
 });

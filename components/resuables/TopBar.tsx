@@ -18,7 +18,7 @@ const TopBar = () => {
   };
 
   return (
-    <View style={[styles.TopBar, { backgroundColor: colors.background }] }>
+    <View style={[styles.TopBar, { backgroundColor: "#6b1fa8" }] }>
       <View style={styles.sideIconContainer}>
         <TouchableOpacity onPress={navigateToSettings}>
           <Ionicons name="cog-outline" size={26} color={colors.text} />

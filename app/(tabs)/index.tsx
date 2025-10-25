@@ -36,7 +36,6 @@ export default function HomeScreen() {
       const response = await api.get("/api/v1/users/myProfile");
       if (response.status === 200) {
         setCurrentUserType(response.data.userType);
-        console.log("👤 Current user type:", response.data.userType);
       }
     } catch (error) {
       console.error("❌ Error fetching current user:", error);
@@ -47,7 +46,6 @@ export default function HomeScreen() {
     try {
       const response = await api.get("/api/v1/users/profiles");
       if (response.status === 200) {
-        console.log("📦 Profiles received:", response.data);
         setProfiles(response.data);
         setCurrentIndex(0);
       }
@@ -66,12 +64,7 @@ export default function HomeScreen() {
   const handleSwipeRight = async (cardIndex: number) => {
     try {
       const swipedProfile = profiles[cardIndex];
-      console.log(
-        "👍 Swiping RIGHT on:",
-        swipedProfile?.name,
-        "ID:",
-        swipedProfile?._id
-      );
+
 
       const response = await api.post("/api/v1/users/accept", {
         otherUserId: swipedProfile?._id,
@@ -79,7 +72,6 @@ export default function HomeScreen() {
       });
 
       if (response.status === 200) {
-        console.log("✅ Accepted profile successfully:", response.data);
         setPreMatchMessage(""); // Clear message after sending
       }
     } catch (error) {
@@ -113,20 +105,12 @@ export default function HomeScreen() {
   const handleSwipeLeft = async (cardIndex: number) => {
     try {
       const swipedProfile = profiles[cardIndex];
-      console.log(
-        "👎 Swiping LEFT on:",
-        swipedProfile?.name,
-        "ID:",
-        swipedProfile?._id
-      );
 
       const response = await api.post("/api/v1/users/reject", {
         otherUserId: swipedProfile?._id,
       });
 
-      if (response.status === 200) {
-        console.log("✅ Rejected profile successfully:", response.data);
-      }
+   
     } catch (error) {
       console.error("❌ Error rejecting profile:", error);
     }
@@ -203,11 +187,9 @@ export default function HomeScreen() {
             onSwipedRight={handleSwipeRight}
             onSwipedLeft={handleSwipeLeft}
             onSwiped={(cardIndex) => {
-              console.log("📍 Swiped card index:", cardIndex);
               setCurrentIndex(cardIndex + 1);
             }}
             onSwipedAll={() => {
-              console.log("🎉 All cards swiped! Fetching new profiles...");
               fetchProfiles();
             }}
           />

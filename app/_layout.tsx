@@ -2,9 +2,9 @@ import { AuthProvider, useAuth } from "@/components/contexts/authContext";
 import { ChatProvider } from "@/components/contexts/chatContext";
 import { ThemeProvider, useTheme } from "@/components/contexts/ThemeContext";
 import {
-  DarkTheme,
-  DefaultTheme,
-  ThemeProvider as NavigationThemeProvider,
+    DarkTheme,
+    DefaultTheme,
+    ThemeProvider as NavigationThemeProvider,
 } from "@react-navigation/native";
 import { BlurView } from "expo-blur";
 import * as NavigationBar from "expo-navigation-bar";
@@ -13,30 +13,27 @@ import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useState } from "react";
 import { Platform, StyleSheet } from "react-native";
 import Animated, {
-  Easing,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
+    Easing,
+    useAnimatedStyle,
+    useSharedValue,
+    withTiming,
 } from "react-native-reanimated";
 
 export const unstable_settings = {
   anchor: "(tabs)",
 };
 
-// Screen transition animation config
 const screenOptions = {
   animation: "fade" as const,
   animationDuration: 300,
 };
 
-// Blur Transition Overlay Component
 function BlurTransitionOverlay({ isVisible }: { isVisible: boolean }) {
   const opacity = useSharedValue(0);
   const blurIntensity = useSharedValue(0);
 
   useEffect(() => {
     if (isVisible) {
-      // Fade in and blur
       opacity.value = withTiming(1, {
         duration: 200,
         easing: Easing.inOut(Easing.ease),
@@ -46,7 +43,6 @@ function BlurTransitionOverlay({ isVisible }: { isVisible: boolean }) {
         easing: Easing.inOut(Easing.ease),
       });
 
-      // Fade out after a brief moment
       setTimeout(() => {
         opacity.value = withTiming(0, {
           duration: 300,
@@ -86,24 +82,20 @@ function RootNavigator() {
   const [showBlur, setShowBlur] = useState(false);
   const [prevIsSignedIn, setPrevIsSignedIn] = useState(isSignedIn);
 
-  // Ensure Android system bars are black and readable
   useEffect(() => {
     const applyAndroidSystemBars = async () => {
       if (Platform.OS !== "android") return;
       try {
-        await NavigationBar.setBackgroundColorAsync("#000000");
+        await NavigationBar.setBackgroundColorAsync("#6b1fa8");
         await NavigationBar.setButtonStyleAsync("light");
         await NavigationBar.setVisibilityAsync("visible");
-        // Prevent content under nav bar by using inset behavior
         await NavigationBar.setBehaviorAsync("inset-swipe");
       } catch (e) {
-        // no-op: best effort
       }
     };
     applyAndroidSystemBars();
   }, []);
 
-  // Trigger blur effect on authentication state change
   useEffect(() => {
     if (prevIsSignedIn !== isSignedIn && !isLoading) {
       setShowBlur(true);
@@ -116,8 +108,7 @@ function RootNavigator() {
   }, [isSignedIn, isLoading, prevIsSignedIn]);
 
   if (isLoading) {
-    // Return a loading screen while checking authentication status
-    return null; // or a custom loading component
+    return null;
   }
 
   return (
@@ -127,14 +118,15 @@ function RootNavigator() {
       {isSignedIn ? (
         <Stack
           screenOptions={{
+            headerShown: false,
             animation: "fade",
-            animationDuration: 300,
+            animationDuration: 1000,
+            gestureEnabled: true,
           }}
         >
           <Stack.Screen
             name="(tabs)"
             options={{
-              headerShown: false,
               gestureEnabled: false,
             }}
             listeners={{
@@ -143,27 +135,18 @@ function RootNavigator() {
           />
           <Stack.Screen
             name="Settings"
-            options={{
-              headerShown: false,
-            }}
             listeners={{
               focus: () => setShowBlur(true),
             }}
           />
           <Stack.Screen
             name="Notifications"
-            options={{
-              headerShown: false,
-            }}
             listeners={{
               focus: () => setShowBlur(true),
             }}
           />
           <Stack.Screen
             name="ChatScreen"
-            options={{
-              headerShown: false,
-            }}
             listeners={{
               focus: () => setShowBlur(true),
             }}
@@ -172,14 +155,15 @@ function RootNavigator() {
       ) : (
         <Stack
           screenOptions={{
+            headerShown: false, 
             animation: "fade",
             animationDuration: 300,
+            gestureEnabled: true,
           }}
         >
           <Stack.Screen
             name="Register"
             options={{
-              headerShown: false,
               gestureEnabled: false,
             }}
             listeners={{
@@ -188,9 +172,12 @@ function RootNavigator() {
           />
           <Stack.Screen
             name="Login"
-            options={{
-              headerShown: false,
+            listeners={{
+              focus: () => setShowBlur(true),
             }}
+          />
+          <Stack.Screen
+            name="ListenerDetailScreen"
             listeners={{
               focus: () => setShowBlur(true),
             }}
@@ -201,7 +188,7 @@ function RootNavigator() {
       <BlurTransitionOverlay isVisible={showBlur} />
       <StatusBar
         style="light"
-        backgroundColor="#000000"
+        backgroundColor="#6b1fa8"
         translucent={false}
         hidden={false}
       />

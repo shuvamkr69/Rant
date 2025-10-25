@@ -2,6 +2,7 @@ import { ListenerStats } from "../models/listenerStat.model.js";
 import { User } from "../models/user.model.js";
 import { UserStats } from "../models/userStats.model.js";
 import { ApiError } from "../utils/apiError.js";
+import { uploadToCloudinary } from "../utils/cloudinary.js";
 
 // Fetch stats for the current user (for MyProfile)
 export const fetchUserStats = async (req, res) => {
@@ -28,8 +29,10 @@ export const fetchUserStats = async (req, res) => {
   }
   res.status(200).json({ userType: user.userType, stats });
 };
+
+
 export const registerUser = async (req, res) => {
-  const { name, mobileNumber, userType } = req.body;
+  const { name, mobileNumber, userType, charge, bio, occupation } = req.body;
 
   if (!name || !mobileNumber) {
     return res.status(400).json({ message: "All fields are required" });
@@ -40,10 +43,21 @@ export const registerUser = async (req, res) => {
       .status(409)
       .json({ message: "User with this mobile Number already exists" });
   }
+
+  // Handle profile image upload if provided
+  let profileImageUrl = null;
+  if (req.file) {
+    profileImageUrl = await uploadToCloudinary(req.file.path, "profiles");
+  }
+
   const newUser = await User.create({
     name,
     mobileNumber,
-    userType: userType || "User", // Use provided userType or default to "User"
+    userType: userType || "User",
+    charge,
+    bio,
+    occupation,
+    profileImage: profileImageUrl,
   });
 
   // Create stats document for the new user

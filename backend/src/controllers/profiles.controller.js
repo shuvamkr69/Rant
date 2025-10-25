@@ -5,12 +5,7 @@ export const fetchProfiles = async (req, res) => {
   const ownUserId = req.user._id;
   const currentUser = req.user;
   const currentUserType = currentUser.userType;
-  console.log("🔍 Current user type:", currentUserType);
-
   const targetUserType = currentUserType === "User" ? "Listener" : "User";
-  console.log("🎯 Target user type to fetch:", targetUserType);
-
-  // Get profiles the current user has already interacted with
   const interactedProfiles = await Profile.find({ userId: ownUserId }).select(
     "otherUserId"
   );
@@ -21,20 +16,17 @@ export const fetchProfiles = async (req, res) => {
   let profiles;
 
   if (currentUserType === "User") {
-    // Users can see ALL Listeners they haven't interacted with
     profiles = await User.find({
       _id: {
         $nin: [...interactedUserIds, ownUserId],
       },
-      userType: targetUserType, // "Listener"
+      userType: targetUserType, 
     }).select("-refreshToken -__v -createdAt -updatedAt -mobileNumber");
 
   } else if (currentUserType === "Listener") {
-    // Listeners can ONLY see Users who have already right-swiped (accepted) them
-    // Find all Users who have accepted this Listener
     const usersWhoAcceptedMe = await Profile.find({
-      otherUserId: ownUserId, // Profiles where THIS listener is the target
-      Status: "accepted", // Only accepted (right swipe)
+      otherUserId: ownUserId, 
+      Status: "accepted", 
     }).select("userId");
 
     const userIdsWhoAcceptedMe = usersWhoAcceptedMe.map(

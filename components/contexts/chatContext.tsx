@@ -127,11 +127,6 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const sendMessage = (receiverId: string, message: string) => {
-    console.log("📤 Sending message:", {
-      receiverId,
-      message,
-      socketConnected: !!socket,
-    });
 
     if (!socket) {
       console.error("❌ Socket not connected! Trying to reconnect...");
@@ -140,7 +135,6 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     if (socket && message.trim()) {
-      console.log("📨 Emitting send_message event to:", receiverId);
       socket.emit("send_message", { receiverId, message: message.trim() });
 
       const tempMessage: any = {
