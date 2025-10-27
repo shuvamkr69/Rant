@@ -6,6 +6,8 @@ import { Profile } from "./models/profile.model.js";
 import { Session } from "./models/session.model.js";
 import { User } from "./models/user.model.js";
 import { UserStats } from "./models/userStats.model.js";
+import { Appointment } from "./models/appointment.model.js";
+import { processSessionPayment } from "./controllers/appointment.controller.js";
 
 let io;
 const userSockets = new Map(); // Map userId to socketId
@@ -66,16 +68,27 @@ export const initializeSocket = (server) => {
     // Handle joining a chat room
     socket.on("join_room", async (data) => {
       try {
-        const { otherUserId } = data;
+        const { otherUserId, appointmentId } = data;
         const currentUserId = userId;
 
-        console.log(`🚪 User ${currentUserId} joining room with ${otherUserId}`);
+        console.log(`🚪 User ${currentUserId} joining room with ${otherUserId}, appointmentId: ${appointmentId}`);
 
-        // Verify they are matched
-        const isMatched = await verifyMatch(currentUserId, otherUserId);
-        if (!isMatched) {
-          socket.emit("error", { message: "You are not matched with this user" });
-          return;
+        // If appointmentId is provided, validate the appointment
+        let validatedAppointment = null;
+        if (appointmentId) {
+          validatedAppointment = await validateAppointment(appointmentId, currentUserId, otherUserId);
+          
+          if (!validatedAppointment.valid) {
+            socket.emit("error", { message: validatedAppointment.message });
+            return;
+          }
+        } else {
+          // Without appointment, verify they are matched
+          const isMatched = await verifyMatch(currentUserId, otherUserId);
+          if (!isMatched) {
+            socket.emit("error", { message: "You are not matched with this user" });
+            return;
+          }
         }
 
         // Get both users to determine who is listener
@@ -113,16 +126,29 @@ export const initializeSocket = (server) => {
               status: "active",
             });
 
+            // Update appointment if provided
+            if (validatedAppointment && validatedAppointment.appointment) {
+              const appointment = validatedAppointment.appointment;
+              appointment.sessionId = session._id;
+              appointment.sessionStartedAt = new Date();
+              await appointment.save();
+            }
+
             sessionData = {
               sessionId: session._id,
               userId: regularUserId,
               listenerId: listenerId,
               startTime: new Date(),
               participants: new Set([currentUserId.toString()]),
+              appointmentId: appointmentId || null,
+              timerInterval: null, // Will hold the interval for broadcasting time updates
             };
 
             activeSessions.set(roomId, sessionData);
             console.log(`📊 Created new session ${session._id} for room ${roomId}`);
+
+            // Start broadcasting timer updates to both participants
+            startSessionTimer(roomId, sessionData);
           }
         } else {
           // Add current user to participants
@@ -130,7 +156,12 @@ export const initializeSocket = (server) => {
           console.log(`📊 User added to existing session for room ${roomId}`);
         }
 
-        socket.emit("room_joined", { roomId, sessionId: sessionData?.sessionId });
+        socket.emit("room_joined", { 
+          roomId, 
+          sessionId: sessionData?.sessionId,
+          appointmentId: sessionData?.appointmentId,
+          startTime: sessionData?.startTime,
+        });
       } catch (error) {
         console.error("❌ Error joining room:", error);
         socket.emit("error", { message: "Failed to join room" });
@@ -327,12 +358,15 @@ export const initializeSocket = (server) => {
 // Helper function to end a session and update stats
 const endSession = async (roomId, sessionData, status = "completed") => {
   try {
-    const { sessionId, userId, listenerId, startTime } = sessionData;
+    const { sessionId, userId, listenerId, startTime, appointmentId } = sessionData;
     
     const endTime = new Date();
     const durationInSeconds = Math.floor((endTime - startTime) / 1000);
 
     console.log(`⏱️ Ending session ${sessionId} - Duration: ${durationInSeconds}s`);
+
+    // Stop the timer broadcast
+    stopSessionTimer(sessionData);
 
     // First, check if session has already been updated (get current state BEFORE updating)
     const currentSession = await Session.findById(sessionId);
@@ -361,6 +395,16 @@ const endSession = async (roomId, sessionData, status = "completed") => {
     );
 
     console.log(`💾 Session ${sessionId} updated in DB with duration: ${durationInSeconds}s`);
+
+    // Process payment if appointment exists
+    let amountCharged = 0;
+    if (appointmentId) {
+      const paymentResult = await processSessionPayment(appointmentId, durationInSeconds);
+      if (paymentResult) {
+        amountCharged = paymentResult.amountCharged;
+        console.log(`💰 Payment processed: ₹${amountCharged} deducted from user, added to listener`);
+      }
+    }
 
     // Update listener stats
     let listenerStats = await ListenerStats.findOne({ userId: listenerId });
@@ -423,6 +467,8 @@ const endSession = async (roomId, sessionData, status = "completed") => {
       durationInSeconds,
       roomId,
       endTime,
+      amountCharged,
+      appointmentId,
     };
 
     if (userSocketId) {
@@ -482,6 +528,91 @@ const verifyMatch = async (userId1, userId2) => {
   }
 
   return isMatched;
+};
+
+// Helper function to validate appointment before joining session
+const validateAppointment = async (appointmentId, currentUserId, otherUserId) => {
+  try {
+    const appointment = await Appointment.findById(appointmentId);
+    
+    if (!appointment) {
+      return { valid: false, message: "Appointment not found" };
+    }
+
+    // Check if user is part of this appointment
+    const isParticipant = 
+      appointment.userId.toString() === currentUserId.toString() ||
+      appointment.listenerId.toString() === currentUserId.toString();
+
+    if (!isParticipant) {
+      return { valid: false, message: "You are not part of this appointment" };
+    }
+
+    // Check if appointment is accepted
+    if (appointment.status !== "accepted") {
+      return { valid: false, message: `Appointment is ${appointment.status}, not accepted` };
+    }
+
+    // Check if appointment time has arrived (allow joining 5 minutes before)
+    const appointmentDateTime = new Date(appointment.requestedDate);
+    const [hours, minutes] = appointment.requestedTime.split(":");
+    appointmentDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+    
+    const now = new Date();
+    const fiveMinutesBefore = new Date(appointmentDateTime.getTime() - 5 * 60 * 1000);
+    
+    if (now < fiveMinutesBefore) {
+      return { 
+        valid: false, 
+        message: "Appointment time has not arrived yet. You can join 5 minutes before the scheduled time." 
+      };
+    }
+
+    // Optional: Check if appointment is not too old (e.g., more than 2 hours past scheduled time)
+    const twoHoursAfter = new Date(appointmentDateTime.getTime() + 2 * 60 * 60 * 1000);
+    if (now > twoHoursAfter) {
+      return { 
+        valid: false, 
+        message: "Appointment time has passed. Please schedule a new appointment." 
+      };
+    }
+
+    return { valid: true, appointment };
+  } catch (error) {
+    console.error("Error validating appointment:", error);
+    return { valid: false, message: "Error validating appointment" };
+  }
+};
+
+// Helper function to start broadcasting timer updates
+const startSessionTimer = (roomId, sessionData) => {
+  // Clear any existing timer
+  if (sessionData.timerInterval) {
+    clearInterval(sessionData.timerInterval);
+  }
+
+  // Broadcast timer every second
+  sessionData.timerInterval = setInterval(() => {
+    const elapsedSeconds = Math.floor((new Date() - sessionData.startTime) / 1000);
+    
+    // Broadcast to all participants in the room
+    io.to(roomId).emit("session_timer_update", {
+      elapsedSeconds,
+      sessionId: sessionData.sessionId,
+      appointmentId: sessionData.appointmentId,
+    });
+  }, 1000);
+
+  console.log(`⏱️ Started timer broadcast for room ${roomId}`);
+};
+
+// Helper function to stop session timer
+const stopSessionTimer = (sessionData) => {
+  if (sessionData.timerInterval) {
+    clearInterval(sessionData.timerInterval);
+    sessionData.timerInterval = null;
+    console.log(`⏱️ Stopped timer broadcast`);
+  }
 };
 
 export const getIO = () => {
