@@ -1,13 +1,13 @@
 import jwt from "jsonwebtoken";
 import { Server } from "socket.io";
+import { processSessionPayment } from "./controllers/appointment.controller.js";
+import { Appointment } from "./models/appointment.model.js";
 import { ListenerStats } from "./models/listenerStat.model.js";
 import { Message } from "./models/message.model.js";
 import { Profile } from "./models/profile.model.js";
 import { Session } from "./models/session.model.js";
 import { User } from "./models/user.model.js";
 import { UserStats } from "./models/userStats.model.js";
-import { Appointment } from "./models/appointment.model.js";
-import { processSessionPayment } from "./controllers/appointment.controller.js";
 
 let io;
 const userSockets = new Map(); // Map userId to socketId

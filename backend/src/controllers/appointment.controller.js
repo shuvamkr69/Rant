@@ -1,9 +1,9 @@
 import { Appointment } from "../models/appointment.model.js";
-import { User } from "../models/user.model.js";
 import { ListenerStats } from "../models/listenerStat.model.js";
+import { User } from "../models/user.model.js";
 import { UserStats } from "../models/userStats.model.js";
-import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/apiError.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
 
 // Create appointment request
 export const createAppointment = asyncHandler(async (req, res) => {

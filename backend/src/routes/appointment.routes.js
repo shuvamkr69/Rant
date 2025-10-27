@@ -1,12 +1,12 @@
 import { Router } from "express";
 import {
-  createAppointment,
-  getMyAppointments,
-  getAppointment,
-  acceptAppointment,
-  proposeNewTime,
-  acceptRescheduledTime,
-  cancelAppointment,
+    acceptAppointment,
+    acceptRescheduledTime,
+    cancelAppointment,
+    createAppointment,
+    getAppointment,
+    getMyAppointments,
+    proposeNewTime,
 } from "../controllers/appointment.controller.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 
@@ -35,3 +35,4 @@ appointmentRouter.patch("/:appointmentId/accept-reschedule", acceptRescheduledTi
 appointmentRouter.patch("/:appointmentId/cancel", cancelAppointment);
 
 export { appointmentRouter };
+
