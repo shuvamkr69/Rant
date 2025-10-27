@@ -1,7 +1,5 @@
 import jwt from "jsonwebtoken";
 import { Server } from "socket.io";
-import { processSessionPayment } from "./controllers/appointment.controller.js";
-import { Appointment } from "./models/appointment.model.js";
 import { ListenerStats } from "./models/listenerStat.model.js";
 import { Message } from "./models/message.model.js";
 import { Profile } from "./models/profile.model.js";
@@ -68,27 +66,16 @@ export const initializeSocket = (server) => {
     // Handle joining a chat room
     socket.on("join_room", async (data) => {
       try {
-        const { otherUserId, appointmentId } = data;
+        const { otherUserId } = data;
         const currentUserId = userId;
 
-        console.log(`🚪 User ${currentUserId} joining room with ${otherUserId}, appointmentId: ${appointmentId}`);
+        console.log(`🚪 User ${currentUserId} joining room with ${otherUserId}`);
 
-        // If appointmentId is provided, validate the appointment
-        let validatedAppointment = null;
-        if (appointmentId) {
-          validatedAppointment = await validateAppointment(appointmentId, currentUserId, otherUserId);
-          
-          if (!validatedAppointment.valid) {
-            socket.emit("error", { message: validatedAppointment.message });
-            return;
-          }
-        } else {
-          // Without appointment, verify they are matched
-          const isMatched = await verifyMatch(currentUserId, otherUserId);
-          if (!isMatched) {
-            socket.emit("error", { message: "You are not matched with this user" });
-            return;
-          }
+        // Verify they are matched
+        const isMatched = await verifyMatch(currentUserId, otherUserId);
+        if (!isMatched) {
+          socket.emit("error", { message: "You are not matched with this user" });
+          return;
         }
 
         // Get both users to determine who is listener
@@ -115,53 +102,145 @@ export const initializeSocket = (server) => {
             regularUserId = currentUserId;
           }
 
-          // Only create session if there's a listener involved
+          // Only create session metadata if there's a listener involved
+          // But DON'T start the timer yet - wait for both users
           if (listenerId) {
-            // Create new session in database
-            const session = await Session.create({
-              userId: regularUserId,
-              listenerId: listenerId,
-              roomId: roomId,
-              startTime: new Date(),
-              status: "active",
-            });
-
-            // Update appointment if provided
-            if (validatedAppointment && validatedAppointment.appointment) {
-              const appointment = validatedAppointment.appointment;
-              appointment.sessionId = session._id;
-              appointment.sessionStartedAt = new Date();
-              await appointment.save();
-            }
-
             sessionData = {
-              sessionId: session._id,
+              sessionId: null, // Will be created when both users join
               userId: regularUserId,
               listenerId: listenerId,
-              startTime: new Date(),
+              startTime: null, // Will be set when both users are present
+              lastResumeTime: null,
               participants: new Set([currentUserId.toString()]),
-              appointmentId: appointmentId || null,
-              timerInterval: null, // Will hold the interval for broadcasting time updates
+              isPaused: false,
+              totalPausedTime: 0,
+              bothUsersPresent: false, // New flag to track both users
             };
 
             activeSessions.set(roomId, sessionData);
-            console.log(`📊 Created new session ${session._id} for room ${roomId}`);
-
-            // Start broadcasting timer updates to both participants
-            startSessionTimer(roomId, sessionData);
+            console.log(`📊 Created session metadata for room ${roomId}, waiting for both users...`);
           }
         } else {
           // Add current user to participants
           sessionData.participants.add(currentUserId.toString());
-          console.log(`📊 User added to existing session for room ${roomId}`);
+          
+          // Check if both users are now present
+          if (sessionData.participants.size === 2 && !sessionData.bothUsersPresent) {
+            // Both users are now in the chat - START THE SESSION!
+            sessionData.bothUsersPresent = true;
+            sessionData.startTime = new Date();
+            sessionData.lastResumeTime = new Date();
+            
+            // Create session in database NOW
+            const session = await Session.create({
+              userId: sessionData.userId,
+              listenerId: sessionData.listenerId,
+              roomId: roomId,
+              startTime: sessionData.startTime,
+              status: "active",
+              activeParticipants: Array.from(sessionData.participants),
+            });
+            
+            sessionData.sessionId = session._id;
+            console.log(`� BOTH USERS PRESENT! Session ${session._id} started for room ${roomId}`);
+            
+            // Notify both users that session has started
+            io.to(roomId).emit("session_started", {
+              sessionId: session._id,
+              sessionStartTime: sessionData.startTime,
+            });
+          } else if (sessionData.isPaused && sessionData.bothUsersPresent) {
+            // Resume session if it was paused (both users were present before)
+            const now = new Date();
+            const pauseDuration = Math.floor((now - sessionData.pausedAt) / 1000);
+            sessionData.totalPausedTime += pauseDuration;
+            sessionData.lastResumeTime = now;
+            sessionData.isPaused = false;
+            
+            // Update session in DB
+            await Session.findByIdAndUpdate(sessionData.sessionId, {
+              status: "active",
+              activeParticipants: Array.from(sessionData.participants),
+              totalPausedTime: sessionData.totalPausedTime,
+            });
+            
+            console.log(`▶️ Session resumed for room ${roomId} after ${pauseDuration}s pause`);
+            
+            // Notify both users that session has resumed
+            io.to(roomId).emit("session_resumed", {
+              sessionId: sessionData.sessionId,
+              sessionStartTime: sessionData.startTime,
+            });
+          }
+          
+          console.log(`📊 User added to session for room ${roomId}. Participants: ${sessionData.participants.size}/2`);
         }
 
+        // Send room_joined confirmation with session status
         socket.emit("room_joined", { 
           roomId, 
           sessionId: sessionData?.sessionId,
-          appointmentId: sessionData?.appointmentId,
-          startTime: sessionData?.startTime,
+          sessionStartTime: sessionData?.startTime,
+          bothUsersPresent: sessionData?.bothUsersPresent || false,
+          waitingForOtherUser: !sessionData?.bothUsersPresent,
         });
+
+        // Check if the other user is a regular User and has exhausted their word limit
+        if (otherUser.userType === "User") {
+          const otherUserStats = await UserStats.findOne({ userId: otherUserId });
+          if (otherUserStats) {
+            // Check for monthly reset
+            const now = new Date();
+            const daysSinceReset = Math.floor((now - new Date(otherUserStats.lastWordResetDate)) / (1000 * 60 * 60 * 24));
+            
+            let wordsRemaining = otherUserStats.monthlyWordLimit - otherUserStats.wordsUsedThisMonth;
+            
+            // If reset needed, they have full limit
+            if (daysSinceReset >= 30) {
+              wordsRemaining = otherUserStats.monthlyWordLimit;
+            }
+            
+            // If other user has no words left, notify current user (likely the Listener)
+            if (wordsRemaining <= 0 && currentUser.userType === "Listener") {
+              socket.emit("other_user_word_limit_exhausted", {
+                userId: otherUserId,
+                userName: otherUser.name,
+                message: `${otherUser.name} has exhausted their monthly word limit.`,
+              });
+              console.log(`⚠️ Notified Listener ${currentUserId} that User ${otherUserId} has no words left`);
+            }
+          }
+        }
+        
+        // Check if current user is a regular User and has exhausted their word limit
+        if (currentUser.userType === "User") {
+          const currentUserStats = await UserStats.findOne({ userId: currentUserId });
+          if (currentUserStats) {
+            // Check for monthly reset
+            const now = new Date();
+            const daysSinceReset = Math.floor((now - new Date(currentUserStats.lastWordResetDate)) / (1000 * 60 * 60 * 24));
+            
+            let wordsRemaining = currentUserStats.monthlyWordLimit - currentUserStats.wordsUsedThisMonth;
+            
+            // If reset needed, they have full limit
+            if (daysSinceReset >= 30) {
+              wordsRemaining = currentUserStats.monthlyWordLimit;
+            }
+            
+            // If current user has no words left and other is a Listener, notify them
+            if (wordsRemaining <= 0 && otherUser.userType === "Listener") {
+              const otherSocketId = userSockets.get(otherUserId.toString());
+              if (otherSocketId) {
+                io.to(otherSocketId).emit("other_user_word_limit_exhausted", {
+                  userId: currentUserId,
+                  userName: currentUser.name,
+                  message: `${currentUser.name} has exhausted their monthly word limit.`,
+                });
+                console.log(`⚠️ Notified Listener ${otherUserId} that User ${currentUserId} has no words left`);
+              }
+            }
+          }
+        }
       } catch (error) {
         console.error("❌ Error joining room:", error);
         socket.emit("error", { message: "Failed to join room" });
@@ -188,9 +267,34 @@ export const initializeSocket = (server) => {
           
           console.log(`📊 Remaining participants: ${sessionData.participants.size}`);
           
-          // End session immediately when user explicitly leaves
-          console.log(`🏁 User left room, ending session for ${roomId}`);
-          await endSession(roomId, sessionData, "completed");
+          // Only pause/end if session was actually started (both users were present)
+          if (sessionData.bothUsersPresent) {
+            if (sessionData.participants.size === 0) {
+              // Both users left - end the session
+              console.log(`🏁 All users left room, ending session for ${roomId}`);
+              await endSession(roomId, sessionData, "completed");
+            } else if (sessionData.participants.size === 1 && !sessionData.isPaused) {
+              // One user left - pause the session
+              sessionData.isPaused = true;
+              sessionData.pausedAt = new Date();
+              
+              // Update session in DB
+              await Session.findByIdAndUpdate(sessionData.sessionId, {
+                status: "paused",
+                pausedAt: sessionData.pausedAt,
+                activeParticipants: Array.from(sessionData.participants),
+              });
+              
+              console.log(`⏸️ Session paused for room ${roomId}`);
+            }
+          } else {
+            // Session never started (both users were never present together)
+            // Just clean up if both users are gone
+            if (sessionData.participants.size === 0) {
+              console.log(`🗑️ Cleaning up unstarted session for room ${roomId}`);
+              activeSessions.delete(roomId);
+            }
+          }
         }
       } catch (error) {
         console.error("❌ Error leaving room:", error);
@@ -204,10 +308,8 @@ export const initializeSocket = (server) => {
         const senderId = userId;
 
         console.log(`💬 Message from ${senderId} to ${receiverId}:`, message);
-        console.log(`📊 SenderId type:`, typeof senderId, senderId);
-        console.log(`📊 ReceiverId type:`, typeof receiverId, receiverId);
 
-        // Verify they are matched - pass IDs as-is, verifyMatch will handle conversion
+        // Verify they are matched
         const isMatched = await verifyMatch(senderId, receiverId);
         if (!isMatched) {
           console.log("❌ Match verification failed!");
@@ -217,9 +319,74 @@ export const initializeSocket = (server) => {
           return;
         }
 
-        console.log("✅ Match verified, saving message...");
+        console.log("✅ Match verified");
 
-        // Save message to database
+        // Get sender and receiver info
+        const senderUser = await User.findById(senderId);
+
+        // Check word limit only if sender is a "User" (not Listener)
+        if (senderUser.userType === "User") {
+          // Count words in the message
+          const wordCount = message.trim().split(/\s+/).filter(word => word.length > 0).length;
+          console.log(`📝 Message word count: ${wordCount}`);
+
+          let userStats = await UserStats.findOne({ userId: senderId });
+          if (!userStats) {
+            userStats = await UserStats.create({ userId: senderId });
+          }
+
+          // Check if monthly limit needs reset
+          const now = new Date();
+          const lastReset = new Date(userStats.lastWordResetDate);
+          const daysSinceReset = Math.floor((now - lastReset) / (1000 * 60 * 60 * 24));
+          
+          // Reset if it's been 30+ days
+          if (daysSinceReset >= 30) {
+            userStats.wordsUsedThisMonth = 0;
+            userStats.lastWordResetDate = now;
+            await userStats.save();
+            console.log(`🔄 Word count reset for user ${senderId}`);
+          }
+
+          // Check if user would exceed limit
+          const wordsAfterSend = userStats.wordsUsedThisMonth + wordCount;
+          if (wordsAfterSend > userStats.monthlyWordLimit) {
+            const wordsRemaining = Math.max(0, userStats.monthlyWordLimit - userStats.wordsUsedThisMonth);
+            socket.emit("word_limit_exceeded", {
+              message: `Monthly word limit reached! You have ${wordsRemaining} words remaining.`,
+              wordsUsed: userStats.wordsUsedThisMonth,
+              wordLimit: userStats.monthlyWordLimit,
+              wordsRemaining,
+            });
+            
+            // Notify the receiver (likely a Listener) that this user has hit their limit
+            const receiverSocketId = userSockets.get(receiverId.toString());
+            if (receiverSocketId) {
+              io.to(receiverSocketId).emit("other_user_word_limit_exhausted", {
+                userId: senderId.toString(),
+                userName: senderUser.name,
+                message: `${senderUser.name} has exhausted their monthly word limit.`,
+              });
+            }
+            
+            return;
+          }
+
+          // Update word count
+          userStats.wordsUsedThisMonth += wordCount;
+          userStats.messagesSent += 1;
+          await userStats.save();
+          console.log(`📊 User word count updated: ${userStats.wordsUsedThisMonth}/${userStats.monthlyWordLimit}`);
+
+          // Send updated word count to user
+          socket.emit("word_count_update", {
+            wordsUsed: userStats.wordsUsedThisMonth,
+            wordLimit: userStats.monthlyWordLimit,
+            wordsRemaining: userStats.monthlyWordLimit - userStats.wordsUsedThisMonth,
+          });
+        }
+
+        // Save message to database (without wordCount field)
         const newMessage = await Message.create({
           senderId,
           receiverId,
@@ -227,7 +394,6 @@ export const initializeSocket = (server) => {
         });
 
         // Check if sender is a Listener and update stats
-        const senderUser = await User.findById(senderId);
         if (senderUser && senderUser.userType === "Listener") {
           let listenerStats = await ListenerStats.findOne({ userId: senderId });
           
@@ -248,6 +414,17 @@ export const initializeSocket = (server) => {
             await listenerStats.save();
             console.log(`✅ [Socket] Listener ${senderId} now listening to ${listenerStats.uniqueUsersListenedTo.length} unique users`);
           }
+        }
+
+        // Update receiver stats (messages received) only for Users
+        const receiverUser = await User.findById(receiverId);
+        if (receiverUser.userType === "User") {
+          let receiverStats = await UserStats.findOne({ userId: receiverId });
+          if (!receiverStats) {
+            receiverStats = await UserStats.create({ userId: receiverId });
+          }
+          receiverStats.messagesReceived += 1;
+          await receiverStats.save();
         }
 
         const populatedMessage = await Message.findById(newMessage._id)
@@ -334,10 +511,17 @@ export const initializeSocket = (server) => {
               
               console.log(`📊 Remaining participants in room ${roomId}:`, sessionData.participants.size);
               
-              // End the session when ANY user disconnects (not waiting for both)
-              // We can optionally check if both are gone, but for now end on first disconnect
-              console.log(`🏁 Ending session for room ${roomId} due to user disconnect`);
-              await endSession(roomId, sessionData, "completed");
+              // Only end session if it was actually started (both users were present)
+              if (sessionData.bothUsersPresent) {
+                console.log(`🏁 Ending session for room ${roomId} due to user disconnect`);
+                await endSession(roomId, sessionData, "completed");
+              } else {
+                // Session never started, just clean up if no one is left
+                if (sessionData.participants.size === 0) {
+                  console.log(`🗑️ Cleaning up unstarted session for room ${roomId}`);
+                  activeSessions.delete(roomId);
+                }
+              }
             }
           }
           
@@ -358,15 +542,25 @@ export const initializeSocket = (server) => {
 // Helper function to end a session and update stats
 const endSession = async (roomId, sessionData, status = "completed") => {
   try {
-    const { sessionId, userId, listenerId, startTime, appointmentId } = sessionData;
+    const { sessionId, userId, listenerId, startTime, totalPausedTime, isPaused, pausedAt } = sessionData;
     
     const endTime = new Date();
-    const durationInSeconds = Math.floor((endTime - startTime) / 1000);
+    
+    // Calculate total paused time (including current pause if session is paused)
+    let finalPausedTime = totalPausedTime || 0;
+    if (isPaused && pausedAt) {
+      const currentPauseDuration = Math.floor((endTime - pausedAt) / 1000);
+      finalPausedTime += currentPauseDuration;
+    }
+    
+    // Calculate active duration (total time - paused time)
+    const totalDuration = Math.floor((endTime - startTime) / 1000);
+    const activeDurationInSeconds = Math.max(0, totalDuration - finalPausedTime);
 
-    console.log(`⏱️ Ending session ${sessionId} - Duration: ${durationInSeconds}s`);
-
-    // Stop the timer broadcast
-    stopSessionTimer(sessionData);
+    console.log(`⏱️ Ending session ${sessionId}`);
+    console.log(`   Total duration: ${totalDuration}s`);
+    console.log(`   Paused time: ${finalPausedTime}s`);
+    console.log(`   Active duration: ${activeDurationInSeconds}s`);
 
     // First, check if session has already been updated (get current state BEFORE updating)
     const currentSession = await Session.findById(sessionId);
@@ -387,24 +581,15 @@ const endSession = async (roomId, sessionData, status = "completed") => {
       sessionId,
       {
         endTime,
-        durationInSeconds,
+        durationInSeconds: activeDurationInSeconds,
+        totalPausedTime: finalPausedTime,
         status,
         statsUpdated: true,
       },
       { new: true }
     );
 
-    console.log(`💾 Session ${sessionId} updated in DB with duration: ${durationInSeconds}s`);
-
-    // Process payment if appointment exists
-    let amountCharged = 0;
-    if (appointmentId) {
-      const paymentResult = await processSessionPayment(appointmentId, durationInSeconds);
-      if (paymentResult) {
-        amountCharged = paymentResult.amountCharged;
-        console.log(`💰 Payment processed: ₹${amountCharged} deducted from user, added to listener`);
-      }
-    }
+    console.log(`💾 Session ${sessionId} updated in DB with active duration: ${activeDurationInSeconds}s`);
 
     // Update listener stats
     let listenerStats = await ListenerStats.findOne({ userId: listenerId });
@@ -421,7 +606,7 @@ const endSession = async (roomId, sessionData, status = "completed") => {
     const updateData = {
       $inc: {
         sessionsConducted: 1,
-        totalChatTime: durationInSeconds,
+        totalChatTime: activeDurationInSeconds,
       },
     };
 
@@ -449,14 +634,14 @@ const endSession = async (roomId, sessionData, status = "completed") => {
       {
         $inc: {
           sessionsCompleted: 1,
-          totalSessionTime: durationInSeconds,
+          totalSessionTime: activeDurationInSeconds,
         },
       },
       { new: true }
     );
 
     console.log(`📊 User stats updated: sessionsCompleted=${updatedUserStats.sessionsCompleted}, totalSessionTime=${updatedUserStats.totalSessionTime}s`);
-    console.log(`✅ Stats successfully updated - Listener: ${listenerId}, User: ${userId}, Duration: ${durationInSeconds}s`);
+    console.log(`✅ Stats successfully updated - Listener: ${listenerId}, User: ${userId}, Active Duration: ${activeDurationInSeconds}s`);
 
     // Emit session_ended event to both parties
     const userSocketId = userSockets.get(userId.toString());
@@ -464,17 +649,16 @@ const endSession = async (roomId, sessionData, status = "completed") => {
 
     const sessionEndData = {
       sessionId,
-      durationInSeconds,
+      durationInSeconds: activeDurationInSeconds,
+      totalPausedTime: finalPausedTime,
       roomId,
       endTime,
-      amountCharged,
-      appointmentId,
     };
 
     if (userSocketId) {
       io.to(userSocketId).emit("session_ended", {
         ...sessionEndData,
-        requestRating: true, // Prompt user to rate the listener
+        requestRating: activeDurationInSeconds >= 1800, // Only request rating if 30+ minutes (1800 seconds)
       });
     }
 
@@ -528,91 +712,6 @@ const verifyMatch = async (userId1, userId2) => {
   }
 
   return isMatched;
-};
-
-// Helper function to validate appointment before joining session
-const validateAppointment = async (appointmentId, currentUserId, otherUserId) => {
-  try {
-    const appointment = await Appointment.findById(appointmentId);
-    
-    if (!appointment) {
-      return { valid: false, message: "Appointment not found" };
-    }
-
-    // Check if user is part of this appointment
-    const isParticipant = 
-      appointment.userId.toString() === currentUserId.toString() ||
-      appointment.listenerId.toString() === currentUserId.toString();
-
-    if (!isParticipant) {
-      return { valid: false, message: "You are not part of this appointment" };
-    }
-
-    // Check if appointment is accepted
-    if (appointment.status !== "accepted") {
-      return { valid: false, message: `Appointment is ${appointment.status}, not accepted` };
-    }
-
-    // Check if appointment time has arrived (allow joining 5 minutes before)
-    const appointmentDateTime = new Date(appointment.requestedDate);
-    const [hours, minutes] = appointment.requestedTime.split(":");
-    appointmentDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-    
-    const now = new Date();
-    const fiveMinutesBefore = new Date(appointmentDateTime.getTime() - 5 * 60 * 1000);
-    
-    if (now < fiveMinutesBefore) {
-      return { 
-        valid: false, 
-        message: "Appointment time has not arrived yet. You can join 5 minutes before the scheduled time." 
-      };
-    }
-
-    // Optional: Check if appointment is not too old (e.g., more than 2 hours past scheduled time)
-    const twoHoursAfter = new Date(appointmentDateTime.getTime() + 2 * 60 * 60 * 1000);
-    if (now > twoHoursAfter) {
-      return { 
-        valid: false, 
-        message: "Appointment time has passed. Please schedule a new appointment." 
-      };
-    }
-
-    return { valid: true, appointment };
-  } catch (error) {
-    console.error("Error validating appointment:", error);
-    return { valid: false, message: "Error validating appointment" };
-  }
-};
-
-// Helper function to start broadcasting timer updates
-const startSessionTimer = (roomId, sessionData) => {
-  // Clear any existing timer
-  if (sessionData.timerInterval) {
-    clearInterval(sessionData.timerInterval);
-  }
-
-  // Broadcast timer every second
-  sessionData.timerInterval = setInterval(() => {
-    const elapsedSeconds = Math.floor((new Date() - sessionData.startTime) / 1000);
-    
-    // Broadcast to all participants in the room
-    io.to(roomId).emit("session_timer_update", {
-      elapsedSeconds,
-      sessionId: sessionData.sessionId,
-      appointmentId: sessionData.appointmentId,
-    });
-  }, 1000);
-
-  console.log(`⏱️ Started timer broadcast for room ${roomId}`);
-};
-
-// Helper function to stop session timer
-const stopSessionTimer = (sessionData) => {
-  if (sessionData.timerInterval) {
-    clearInterval(sessionData.timerInterval);
-    sessionData.timerInterval = null;
-    console.log(`⏱️ Stopped timer broadcast`);
-  }
 };
 
 export const getIO = () => {

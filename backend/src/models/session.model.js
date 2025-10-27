@@ -31,12 +31,25 @@ const sessionSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["active", "completed", "disconnected", "cancelled"],
+      enum: ["active", "paused", "completed", "disconnected", "cancelled"],
       default: "active",
     },
     statsUpdated: {
       type: Boolean,
       default: false, // Prevents duplicate stat updates
+    },
+    // New fields for pause/resume tracking
+    pausedAt: {
+      type: Date,
+      default: null,
+    },
+    totalPausedTime: {
+      type: Number,
+      default: 0, // in seconds
+    },
+    activeParticipants: {
+      type: [String], // Array of user IDs currently in the session
+      default: [],
     },
   },
   { timestamps: true }

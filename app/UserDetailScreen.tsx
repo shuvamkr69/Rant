@@ -1,8 +1,10 @@
 import BackButton from "@/components/resuables/BackButton";
+import { api } from "@/components/utils/api";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Dimensions,
   Image,
@@ -48,13 +50,33 @@ const UserDetailScreen = () => {
     };
   });
 
-  const handleSubmit = () => {
-    console.log("Submitting details:", {
-      rate,
-      bio,
-      experience,
-      specialization,
-    });
+  const detailsAsyncStorage = async() => {
+    try {
+      const userType =await AsyncStorage.getItem("userType")
+    const name = await AsyncStorage.getItem("name")
+    const mobileNumber = await AsyncStorage.getItem("mobileNumber")
+    } catch (error) {
+      console.log("Error retrieving user details from AsyncStorage:", error);
+    }
+    
+  };
+
+  useEffect(() => {
+    detailsAsyncStorage();
+  }, []);
+  
+  const handleSubmit = async() => {
+    try {
+      const response = await api.post("/api/v1/users/register", {
+        profileImage,
+        bio,
+      });
+      if(response.status === 201){
+        console.log("Profile completed successfully");
+      }
+    } catch (error) {
+      
+    }
     router.push("/(tabs)" as any);
   };
 
@@ -115,7 +137,9 @@ const UserDetailScreen = () => {
                       <Ionicons name="camera" size={20} color="#ffffff" />
                     </LinearGradient>
                   </View>
+                  
                 </Animated.View>
+                <Text style={styles.imageInfo}>You can always add it later!</Text>
               </TouchableOpacity>
             </Animated.View>
 
@@ -124,99 +148,7 @@ const UserDetailScreen = () => {
               entering={FadeInUp.duration(800).delay(400).springify()}
               style={styles.formSection}
             >
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>
-                  <Ionicons name="cash-outline" size={16} color="#c4b5fd" />{" "}
-                    Hourly Charged
-                </Text>
-                <View style={styles.inputWrapper}>
-                  <LinearGradient
-                    colors={[
-                      "rgba(139, 92, 246, 0.1)",
-                      "rgba(139, 92, 246, 0.05)",
-                    ]}
-                    style={styles.inputGradient}
-                  >
-                    <Text style={styles.currencySymbol}>₹</Text>
-                    <TextInput
-                      placeholder="Enter your rate"
-                      placeholderTextColor="#a78bfa"
-                      style={styles.input}
-                      value={rate}
-                      onChangeText={setRate}
-                      keyboardType="numeric"
-                    />
-                  </LinearGradient>
-                </View>
-              </View>
-
-              {/* Experience Input */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>
-                  <Ionicons
-                    name="briefcase-outline"
-                    size={16}
-                    color="#c4b5fd"
-                  />{" "}
-                  Years of Experience
-                </Text>
-                <View style={styles.inputWrapper}>
-                  <LinearGradient
-                    colors={[
-                      "rgba(139, 92, 246, 0.1)",
-                      "rgba(139, 92, 246, 0.05)",
-                    ]}
-                    style={styles.inputGradient}
-                  >
-                    <Ionicons
-                      name="time-outline"
-                      size={20}
-                      color="#a78bfa"
-                      style={styles.inputIcon}
-                    />
-                    <TextInput
-                      placeholder="e.g., 3 years"
-                      placeholderTextColor="#a78bfa"
-                      style={styles.input}
-                      value={experience}
-                      onChangeText={setExperience}
-                      keyboardType="numeric"
-                    />
-                  </LinearGradient>
-                </View>
-              </View>
-
-              {/* Specialization Input */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>
-                  <Ionicons name="star-outline" size={16} color="#c4b5fd" />{" "}
-                  Specialization
-                </Text>
-                <View style={styles.inputWrapper}>
-                  <LinearGradient
-                    colors={[
-                      "rgba(139, 92, 246, 0.1)",
-                      "rgba(139, 92, 246, 0.05)",
-                    ]}
-                    style={styles.inputGradient}
-                  >
-                    <Ionicons
-                      name="ribbon-outline"
-                      size={20}
-                      color="#a78bfa"
-                      style={styles.inputIcon}
-                    />
-                    <TextInput
-                      placeholder="e.g., Mental Health, Career Counseling"
-                      placeholderTextColor="#a78bfa"
-                      style={styles.input}
-                      value={specialization}
-                      onChangeText={setSpecialization}
-                    />
-                  </LinearGradient>
-                </View>
-              </View>
-
+              
               {/* Bio Input */}
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>
@@ -369,6 +301,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 3,
     borderColor: "#1a0033",
+  },
+  imageInfo:{
+    marginTop: 10,
+    fontSize: 14,
+    color: "#c4b5fd",
+    textAlign: "center",
   },
   formSection: {
     marginBottom: 30,

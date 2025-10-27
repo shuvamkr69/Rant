@@ -2,9 +2,12 @@ import { useTheme } from "@/components/contexts/ThemeContext";
 import TopBar from "@/components/resuables/TopBar";
 import { api } from "@/components/utils/api";
 import { Colors } from "@/constants/theme";
+import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
+  Animated,
+  Easing,
   Image,
   RefreshControl,
   ScrollView,
@@ -13,15 +16,127 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Svg, { Circle } from "react-native-svg";
+
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
+// Circular progress stat component
+const CircularStat = ({
+  label,
+  value,
+  maxValue = 100,
+  color,
+  delay = 0,
+}: {
+  label: string;
+  value: number;
+  maxValue?: number;
+  color: string;
+  delay?: number;
+}) => {
+  const animatedProgress = useRef(new Animated.Value(0)).current;
+  const size = 120;
+  const strokeWidth = 10;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+
+  useEffect(() => {
+    // Calculate percentage (0-100)
+    const percentage = Math.min((value / maxValue) * 100, 100);
+
+    Animated.timing(animatedProgress, {
+      toValue: percentage,
+      duration: 1200,
+      delay,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [value, maxValue, delay]);
+
+  // Calculate stroke dash offset based on animated progress
+  const strokeDashoffset = animatedProgress.interpolate({
+    inputRange: [0, 100],
+    outputRange: [circumference, 0],
+  });
+
+  return (
+    <View style={{ alignItems: "center", marginBottom: 24 }}>
+      <View style={{ position: "relative" }}>
+        <Svg width={size} height={size}>
+          {/* Background circle */}
+          <Circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke="#e0e0e0"
+            strokeWidth={strokeWidth}
+            fill="none"
+            opacity={0.2}
+          />
+          {/* Animated progress circle */}
+          <AnimatedCircle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke={color}
+            strokeWidth={strokeWidth}
+            fill="none"
+            strokeDasharray={circumference}
+            strokeDashoffset={strokeDashoffset}
+            strokeLinecap="round"
+            rotation="-90"
+            origin={`${size / 2}, ${size / 2}`}
+          />
+        </Svg>
+        {/* Center value display */}
+        <View
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Text style={{ fontSize: 26, fontWeight: "bold", color }}>
+            {value}
+          </Text>
+        </View>
+      </View>
+      <Text
+        style={{
+          marginTop: 8,
+          fontSize: 14,
+          fontWeight: "600",
+          color: "#666",
+          textAlign: "center",
+        }}
+      >
+        {label}
+      </Text>
+    </View>
+  );
+};
 
 export default function MyProfile() {
   const { colorScheme } = useTheme();
   const colors = Colors[colorScheme];
+  const TOPBAR_COLOR = "#6b1fa8";
   const [userProfileData, setUserProfileData] = useState<any>(null);
   const [userStats, setUserStats] = useState<any>(null);
   const [userType, setUserType] = useState<string>("");
   const [refreshing, setRefreshing] = useState(false);
   const [profileImage, setProfileImage] = useState<string | null>(null);
+
+  // animation refs
+  const profileScale = useRef(new Animated.Value(0.96)).current;
+  const detailsOpacity = useRef(new Animated.Value(0)).current;
+  const detailsTranslate = useRef(new Animated.Value(12)).current;
+  const statsAnimRef = useRef<
+    Array<{ translate: Animated.Value; opacity: Animated.Value }>
+  >([]);
 
   const fetchMyProfile = async () => {
     try {
@@ -50,32 +165,107 @@ export default function MyProfile() {
     fetchMyProfile();
   });
 
-  // Prepare data for chart
-  let chartData: { label: string; value: number }[] = [];
+  // initialize stat animated values when stats change
+  useEffect(() => {
+    const len = statsData.length;
+    // ensure array has correct length
+    while (statsAnimRef.current.length < len) {
+      statsAnimRef.current.push({
+        translate: new Animated.Value(12),
+        opacity: new Animated.Value(0),
+      });
+    }
+    if (statsAnimRef.current.length > len) {
+      statsAnimRef.current = statsAnimRef.current.slice(0, len);
+    }
+
+    // run entrance animations when profile/ stats load
+    Animated.sequence([
+      Animated.parallel([
+        Animated.timing(profileScale, {
+          toValue: 1,
+          duration: 420,
+          easing: Easing.out(Easing.exp),
+          useNativeDriver: true,
+        }),
+        Animated.timing(detailsOpacity, {
+          toValue: 1,
+          duration: 360,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(detailsTranslate, {
+          toValue: 0,
+          duration: 360,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start();
+  }, [userProfileData, userStats]);
+
+  // Prepare data for stats
+  let statsData: {
+    label: string;
+    value: number;
+    maxValue: number;
+    color: string;
+  }[] = [];
   if (userStats) {
     if (userType === "Listener") {
-      chartData = [
-        { label: "Users", value: userStats.uniqueUsersListenedTo?.length || 0 },
+      statsData = [
+        {
+          label: "Users Helped",
+          value: userStats.uniqueUsersListenedTo?.length || 0,
+          maxValue: 50, // max scale for display
+          color: TOPBAR_COLOR,
+        },
         {
           label: "Sessions",
           value: userStats.sessionsConducted || userStats.sessionsCount || 0,
+          maxValue: 100,
+          color: "#4ECDC4",
         },
         {
-          label: "Time(min)",
+          label: "Time (min)",
           value: Math.round(
             (userStats.totalChatTime || userStats.timeSpentListening || 0) / 60
           ),
+          maxValue: 500,
+          color: "#45B7D1",
         },
-        { label: "Rating", value: userStats.averageRating || 0 },
+        {
+          label: "Rating",
+          value: Math.round((userStats.averageRating || 0) * 10) / 10,
+          maxValue: 5,
+          color: "#FFA07A",
+        },
       ];
     } else {
-      chartData = [
-        { label: "Sent", value: userStats.messagesSent },
-        { label: "Received", value: userStats.messagesReceived },
-        { label: "Sessions", value: userStats.sessionsCompleted || 0 },
+      statsData = [
         {
-          label: "Time(min)",
+          label: "Sent",
+          value: userStats.messagesSent || 0,
+          maxValue: 500,
+          color: TOPBAR_COLOR,
+        },
+        {
+          label: "Received",
+          value: userStats.messagesReceived || 0,
+          maxValue: 500,
+          color: "#4ECDC4",
+        },
+        {
+          label: "Sessions",
+          value: userStats.sessionsCompleted || 0,
+          maxValue: 50,
+          color: "#45B7D1",
+        },
+        {
+          label: "Time (min)",
           value: Math.round((userStats.totalSessionTime || 0) / 60),
+          maxValue: 300,
+          color: "#FFA07A",
         },
       ];
     }
@@ -98,10 +288,18 @@ export default function MyProfile() {
         }
       >
         <View style={styles.myProfilePage}>
-          <View
-            style={[styles.imageContainer, { backgroundColor: colors.icon }]}
+          <LinearGradient
+            colors={[TOPBAR_COLOR, "#7f2bb8"]}
+            style={[styles.imageContainer]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
           >
-            <View style={styles.profileImage}>
+            <Animated.View
+              style={[
+                styles.profileImage,
+                { transform: [{ scale: profileScale }] },
+              ]}
+            >
               {profileImage ? (
                 <Image
                   source={{ uri: profileImage }}
@@ -113,21 +311,26 @@ export default function MyProfile() {
                   <Text style={styles.placeholderText}>No Image</Text>
                 </View>
               )}
-            </View>
-          </View>
-          <View
+            </Animated.View>
+          </LinearGradient>
+
+          <Animated.View
             style={[
               styles.detailsContainer,
-              { backgroundColor: colors.background },
+              {
+                backgroundColor: colors.background,
+                opacity: detailsOpacity,
+                transform: [{ translateY: detailsTranslate }],
+              },
             ]}
           >
             <Text style={[styles.detailHeading, { color: colors.text }]}>
               {userProfileData?.name}
             </Text>
-            <Text style={[styles.detailHeading, { color: colors.icon }]}>
+            <Text style={[styles.userTypeText, { color: TOPBAR_COLOR }]}>
               {userProfileData?.userType}
             </Text>
-          </View>
+          </Animated.View>
         </View>
 
         {/* Stats Section */}
@@ -137,14 +340,14 @@ export default function MyProfile() {
               fontSize: 24,
               fontWeight: "bold",
               color: colors.text,
-              marginBottom: 20,
+              marginBottom: 30,
             }}
           >
             Your Stats
           </Text>
-          {userStats && chartData.length > 0 ? (
+          {userStats && statsData.length > 0 ? (
             <View>
-              {/* Stat Cards */}
+              {/* Circular Stats Grid */}
               <View
                 style={{
                   flexDirection: "row",
@@ -153,58 +356,20 @@ export default function MyProfile() {
                   marginBottom: 20,
                 }}
               >
-                {chartData.map((item, index) => {
-                  const cardColors = [
-                    "#FF6B6B",
-                    "#4ECDC4",
-                    "#45B7D1",
-                    "#FFA07A",
-                  ];
-                  const gradientColors = [
-                    ["#FF6B6B", "#FF8E8E"],
-                    ["#4ECDC4", "#6EDDD5"],
-                    ["#45B7D1", "#67C7E1"],
-                    ["#FFA07A", "#FFB89A"],
-                  ];
-
-                  return (
-                    <View
-                      key={index}
-                      style={{
-                        width: "48%",
-                        backgroundColor: cardColors[index % 4],
-                        borderRadius: 16,
-                        padding: 16,
-                        marginBottom: 15,
-                        shadowColor: "#000",
-                        shadowOffset: { width: 0, height: 4 },
-                        shadowOpacity: 0.3,
-                        shadowRadius: 8,
-                        elevation: 8,
-                      }}
-                    >
-                      <Text
-                        style={{
-                          fontSize: 13,
-                          color: "#fff",
-                          opacity: 0.9,
-                          marginBottom: 8,
-                        }}
-                      >
-                        {item.label}
-                      </Text>
-                      <Text
-                        style={{
-                          fontSize: 28,
-                          fontWeight: "bold",
-                          color: "#fff",
-                        }}
-                      >
-                        {item.value}
-                      </Text>
-                    </View>
-                  );
-                })}
+                {statsData.map((item, index) => (
+                  <View
+                    key={index}
+                    style={{ width: "48%", alignItems: "center" }}
+                  >
+                    <CircularStat
+                      label={item.label}
+                      value={item.value}
+                      maxValue={item.maxValue}
+                      color={item.color}
+                      delay={index * 150}
+                    />
+                  </View>
+                ))}
               </View>
             </View>
           ) : (
@@ -254,6 +419,11 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginBottom: 10,
     color: "#333",
+  },
+  userTypeText: {
+    fontSize: 16,
+    fontWeight: "600",
+    opacity: 0.95,
   },
   profileImage: {
     width: 150,

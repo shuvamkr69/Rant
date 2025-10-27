@@ -3,9 +3,12 @@ import { useTheme } from "@/components/contexts/ThemeContext";
 import TopBar from "@/components/resuables/TopBar";
 import { Colors } from "@/constants/theme";
 import { useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import {
+  Animated,
+  Easing,
   FlatList,
+  Image,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -18,10 +21,21 @@ const Chats = () => {
   const { colorScheme } = useTheme();
   const colors = Colors[colorScheme];
   const router = useRouter();
+  const animatedPlayed = useRef(false);
+  const isFocusedRef = useRef(false);
+
+  // Map of animated values per match id
+  const animatedMapRef = useRef(new Map());
+
+  const TOPBAR_COLOR = "#6b1fa8"; // keep same accent as TopBar
 
   useFocusEffect(
     useCallback(() => {
+      isFocusedRef.current = true;
       loadMatches();
+      return () => {
+        isFocusedRef.current = false;
+      };
     }, [])
   );
 
@@ -30,6 +44,49 @@ const Chats = () => {
     // @ts-ignore - Dynamic route navigation
     router.push(`/ChatScreen?userId=${match._id}&name=${match.name}`);
   };
+
+  // Ensure animated values exist for each match
+  const ensureAnimatedValues = (list: any[]) => {
+    list.forEach((m, index) => {
+      if (!animatedMapRef.current.has(m._id)) {
+        const translate = new Animated.Value(-18);
+        const opacity = new Animated.Value(0);
+        animatedMapRef.current.set(m._id, { translate, opacity });
+      }
+    });
+  };
+
+  // start staggered spring animation once per app session when screen first populated
+  useEffect(() => {
+    if (!isFocusedRef.current) return;
+    if (matches.length === 0) return;
+    ensureAnimatedValues(matches);
+
+    if (animatedPlayed.current) return;
+
+    const animations: Animated.CompositeAnimation[] = matches.map((m, i) => {
+      const vals = animatedMapRef.current.get(m._id);
+      return Animated.parallel([
+        Animated.spring(vals.translate, {
+          toValue: 0,
+          useNativeDriver: true,
+          speed: 14,
+          bounciness: 8,
+        }),
+        Animated.timing(vals.opacity, {
+          toValue: 1,
+          duration: 220,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]);
+    });
+
+    // stagger them so cards spring down one after another
+    Animated.stagger(80, animations).start(() => {
+      animatedPlayed.current = true;
+    });
+  }, [matches]);
 
   return (
     <SafeAreaView
@@ -53,32 +110,66 @@ const Chats = () => {
             <FlatList
               data={matches}
               keyExtractor={(item) => item._id}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[styles.card, { backgroundColor: colors.background, borderColor: colors.icon }]}
-                  onPress={() => handleChatPress(item)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.cardContent}>
-                    <View
-                      style={[styles.avatar, { backgroundColor: colors.tint }]}
+                renderItem={({ item, index }) => {
+                  // ensure animated values exist
+                  if (!animatedMapRef.current.has(item._id)) {
+                    const translate = new Animated.Value(-18);
+                    const opacity = new Animated.Value(0);
+                    animatedMapRef.current.set(item._id, { translate, opacity });
+                  }
+
+                  const anim = animatedMapRef.current.get(item._id);
+
+                  return (
+                    <Animated.View
+                      style={{
+                        transform: [{ translateY: anim?.translate || 0 }],
+                        opacity: anim?.opacity || 1,
+                      }}
                     >
-                      <Text style={styles.avatarText}>
-                        {item.name.charAt(0).toUpperCase()}
-                      </Text>
-                    </View>
-                    <View style={styles.chatInfo}>
-                      <Text style={[styles.chatName, { color: colors.text }]}>
-                        {item.name}
-                      </Text>
-                      <Text style={[styles.chatType, { color: colors.icon }]}>
-                        {item.userType}
-                      </Text>
-                    </View>
-                  </View>
-                  <Text style={[styles.arrow, { color: colors.icon }]}>›</Text>
-                </TouchableOpacity>
-              )}
+                      <TouchableOpacity
+                        style={[
+                          styles.card,
+                          {
+                            backgroundColor:
+                              colorScheme === "dark" ? "#1b1226" : "#ffffff",
+                            borderColor: TOPBAR_COLOR,
+                          },
+                        ]}
+                        onPress={() => handleChatPress(item)}
+                        activeOpacity={0.8}
+                      >
+                        <View style={styles.cardContent}>
+                          {(item as any).profileImage ? (
+                            <Image
+                              source={{ uri: (item as any).profileImage }}
+                              style={styles.avatarImage}
+                              resizeMode="cover"
+                            />
+                          ) : (
+                            <View
+                              style={[styles.avatar, { backgroundColor: colors.tint }]}
+                            >
+                              <Text style={styles.avatarText}>
+                                {item.name?.charAt(0).toUpperCase()}
+                              </Text>
+                            </View>
+                          )}
+
+                          <View style={styles.chatInfo}>
+                            <Text style={[styles.chatName, { color: colors.text }]}> 
+                              {item.name}
+                            </Text>
+                            <Text style={[styles.chatType, { color: colors.icon }]}> 
+                              {item.userType}
+                            </Text>
+                          </View>
+                        </View>
+                        <Text style={[styles.arrow, { color: colors.icon }]}>›</Text>
+                      </TouchableOpacity>
+                    </Animated.View>
+                  );
+                }}
               contentContainerStyle={styles.listContent}
             />
           )}
@@ -131,6 +222,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     marginHorizontal: 15,
     marginVertical: 6,
+    // nicer shadow / elevation
+    shadowColor: "#6b1fa8",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 6,
   },
   cardContent: {
     flexDirection: "row",
@@ -144,6 +241,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginRight: 15,
+  },
+  avatarImage: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    marginRight: 12,
+    backgroundColor: "#ddd",
   },
   avatarText: {
     color: "#ffffff",

@@ -21,7 +21,7 @@ export const fetchProfiles = async (req, res) => {
         $nin: [...interactedUserIds, ownUserId],
       },
       userType: targetUserType, 
-    }).select("-refreshToken -__v -createdAt -updatedAt -mobileNumber");
+    }).select("-refreshToken -__v -createdAt -updatedAt -mobileNumber -password");
 
   } else if (currentUserType === "Listener") {
     const usersWhoAcceptedMe = await Profile.find({

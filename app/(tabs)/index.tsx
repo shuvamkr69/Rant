@@ -8,6 +8,7 @@ import { useCallback, useState } from "react";
 import {
   Alert,
   Dimensions,
+  Image,
   Modal,
   StyleSheet,
   Text,
@@ -141,7 +142,8 @@ export default function HomeScreen() {
                 currentUserType === "Listener" && card.preMatchMessage;
 
               return (
-                <View style={[styles.card, { backgroundColor: colors.background, borderColor: colors.icon }]}>
+                <View style={[styles.card, { backgroundColor: colors.background, borderColor:"#6b1fa8" }]}>
+                  <Image source = {{uri: card.profileImage}} style = {styles.profileImage}/>
                   <Text style={[styles.profileCardText, { color: colors.text }]}>
                     {card.name || card.username || "Unknown"}
                   </Text>
@@ -149,9 +151,7 @@ export default function HomeScreen() {
                   {/* Show pre-match message if Listener is viewing User's card */}
                   {hasPreMessage && (
                     <View style={[styles.preMessageContainer, { backgroundColor: colorScheme === 'dark' ? '#0f1a1f' : '#f0f8ff', borderLeftColor: colors.tint }]}>
-                      <Text style={[styles.preMessageLabel, { color: colors.icon }]}>
-                        Message from this user:
-                      </Text>
+                      
                       <Text style={[styles.preMessageText, { color: colors.text }]}>
                         {card.preMatchMessage}
                       </Text>
@@ -167,7 +167,7 @@ export default function HomeScreen() {
                       <Ionicons
                         name="chatbubble-outline"
                         size={30}
-                        color={colors.tint}
+                        color={"#6b1fa8"}
                       />
                     </TouchableOpacity>
                   )}
@@ -195,7 +195,14 @@ export default function HomeScreen() {
           />
         ) : (
           <View style={styles.noProfilesAvailable}>
-            <Text style={[styles.noProfilesText, { color: colors.icon }]}>No profiles available</Text>
+            <Image 
+              source={require('@/assets/images/icons/404.png')} 
+              style={styles.notFoundGif}
+              resizeMode="contain"
+            />
+            <Text style={[styles.noProfilesText, { color: colors.text }]}>
+              No more profiles for now
+            </Text>
           </View>
         )}
       </View>
@@ -270,11 +277,25 @@ const styles = StyleSheet.create({
     width: SCREEN_WIDTH * 0.9,
     borderRadius: 20,
     borderWidth: 2,
-    borderColor: "#E8E8E8",
+    borderColor: "#6b1fa8",
     justifyContent: "flex-end",
-    // alignItems: "flex-end",
     backgroundColor: "white",
     padding: 20,
+    shadowColor: "#6b1fa8",
+    shadowOffset: {
+      width: 0, height: 8,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  profileImage:{
+    width: '100%',
+    height: '75%',
+    alignSelf: 'center',
+    resizeMode: 'cover',
+    borderRadius: 15,
+    marginBottom: 15,
   },
   profileCardText: {
     textAlign: "left",
@@ -295,20 +316,12 @@ const styles = StyleSheet.create({
     padding: 15,
     backgroundColor: "#f0f8ff",
     borderRadius: 10,
-    borderLeftWidth: 4,
     borderLeftColor: "#4CAF50",
     width: "90%",
-  },
-  preMessageLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#555",
-    marginBottom: 5,
   },
   preMessageText: {
     fontSize: 16,
     color: "#333",
-    fontStyle: "italic",
   },
   chatButton: {
     position: "absolute",
@@ -352,7 +365,7 @@ const styles = StyleSheet.create({
   },
   messageInput: {
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: "#6b1fa8",
     borderRadius: 10,
     padding: 15,
     fontSize: 16,
@@ -396,11 +409,15 @@ const styles = StyleSheet.create({
   noProfilesAvailable: {
     justifyContent: "center",
     alignItems: "center",
+    bottom: "5%",       //a bit of hardcoding aint kill no one
+  },
+  notFoundGif: {
+    width: SCREEN_WIDTH * 0.5,
+    height: SCREEN_HEIGHT * 0.3,
   },
   noProfilesText: {
     textAlign: "center",
-    fontSize: 32,
-    fontWeight: "bold",
-    color: "white",
+    fontSize: 20,
+    fontWeight: "600",
   },
 });

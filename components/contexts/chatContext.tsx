@@ -24,6 +24,12 @@ type Match = {
   userType: string;
 };
 
+type WordCountStatus = {
+  wordsUsed: number;
+  wordLimit: number;
+  wordsRemaining: number;
+};
+
 type ChatContextType = {
   socket: any;
   messages: Message[];
@@ -39,6 +45,11 @@ type ChatContextType = {
   isPending: boolean;
   pendingMessage: string;
   reconnectSocket: () => Promise<void>;
+  wordCountStatus: WordCountStatus | null;
+  sessionStartTime: Date | null;
+  sessionDuration: number; // in seconds
+  canRateListener: boolean;
+  waitingForOtherUser: boolean;
 };
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -51,6 +62,11 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
   const [isTyping, setIsTyping] = useState(false);
   const [isPending, setIsPending] = useState(false);
   const [pendingMessage, setPendingMessage] = useState("");
+  const [wordCountStatus, setWordCountStatus] = useState<WordCountStatus | null>(null);
+  const [sessionStartTime, setSessionStartTime] = useState<Date | null>(null);
+  const [sessionDuration, setSessionDuration] = useState(0);
+  const [canRateListener, setCanRateListener] = useState(false);
+  const [waitingForOtherUser, setWaitingForOtherUser] = useState(false);
 
   useEffect(() => {
     initSocket();
@@ -104,6 +120,60 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
       newSocket.on("user_stop_typing", (data: { userId: string }) => {
         if (data.userId === currentChatUser?._id) {
           setIsTyping(false);
+        }
+      });
+
+      // Word count update
+      newSocket.on("word_count_update", (data: WordCountStatus) => {
+        console.log("📊 Word count updated:", data);
+        setWordCountStatus(data);
+      });
+
+      // Word limit exceeded
+      newSocket.on("word_limit_exceeded", (data: any) => {
+        console.log("⚠️ Word limit exceeded:", data);
+        alert(data.message);
+        setWordCountStatus({
+          wordsUsed: data.wordsUsed,
+          wordLimit: data.wordLimit,
+          wordsRemaining: data.wordsRemaining,
+        });
+      });
+
+      // Session started/joined
+      newSocket.on("room_joined", (data: { sessionStartTime?: string; waitingForOtherUser?: boolean }) => {
+        console.log("🚪 Room joined, session data:", data);
+        if (data.sessionStartTime) {
+          setSessionStartTime(new Date(data.sessionStartTime));
+          setWaitingForOtherUser(false);
+        } else if (data.waitingForOtherUser) {
+          setWaitingForOtherUser(true);
+          setSessionStartTime(null);
+        }
+      });
+
+      // Session actually started (when both users are present)
+      newSocket.on("session_started", (data: { sessionStartTime: string }) => {
+        console.log("🚀 Session started with both users:", data);
+        setSessionStartTime(new Date(data.sessionStartTime));
+        setWaitingForOtherUser(false);
+      });
+
+      // Session resumed (when user comes back)
+      newSocket.on("session_resumed", (data: { sessionStartTime: string }) => {
+        console.log("▶️ Session resumed:", data);
+        setSessionStartTime(new Date(data.sessionStartTime));
+        setWaitingForOtherUser(false);
+      });
+
+      // Session ended
+      newSocket.on("session_ended", (data: { durationInSeconds: number; requestRating?: boolean }) => {
+        console.log("🏁 Session ended:", data);
+        setSessionDuration(data.durationInSeconds);
+        setSessionStartTime(null);
+        setWaitingForOtherUser(false);
+        if (data.requestRating) {
+          setCanRateListener(true);
         }
       });
 
@@ -222,6 +292,11 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
         isPending,
         pendingMessage,
         reconnectSocket,
+        wordCountStatus,
+        sessionStartTime,
+        sessionDuration,
+        canRateListener,
+        waitingForOtherUser,
       }}
     >
       {children}

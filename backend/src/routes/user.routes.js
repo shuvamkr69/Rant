@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
     fetchUserStats,
     fetchWalletBalance,
+    getWordCountStatus,
     loginUser,
     logoutUser,
     registerUser,
@@ -17,5 +18,6 @@ userRouter.post("/logout", verifyJWT, logoutUser);
 
 userRouter.get("/getBalance", verifyJWT, fetchWalletBalance);
 userRouter.get("/getStats", verifyJWT, fetchUserStats);
+userRouter.get("/wordCount", verifyJWT, getWordCountStatus);
 
 export { userRouter };

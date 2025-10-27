@@ -124,6 +124,18 @@ export const submitRating = async (req, res) => {
       return res.status(400).json({ message: "Can only rate completed sessions" });
     }
 
+    // Check if session duration is at least 30 minutes (1800 seconds)
+    const minDurationSeconds = 1800; // 30 minutes
+    if (session.durationInSeconds < minDurationSeconds) {
+      const minutesRequired = Math.ceil(minDurationSeconds / 60);
+      const minutesActual = Math.floor(session.durationInSeconds / 60);
+      return res.status(400).json({ 
+        message: `You must talk for at least ${minutesRequired} minutes to rate a listener. This session was ${minutesActual} minutes.`,
+        minMinutes: minutesRequired,
+        actualMinutes: minutesActual,
+      });
+    }
+
     // Update listener stats with rating
     const listenerStats = await ListenerStats.findOne({ userId: listenerId });
     if (!listenerStats) {

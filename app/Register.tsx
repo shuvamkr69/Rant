@@ -26,9 +26,10 @@ const Register = () => {
   const { signIn } = useAuth();
   const [userType, setUserType] = useState<"User" | "Listener">("User");
   const [formData, setFormData] = useState({
+    userType: userType,
     name: "",
+    age: 0,
     mobileNumber: "",
-    
   });
 
   useEffect(() => {
@@ -63,10 +64,10 @@ const Register = () => {
 
   const handleRegister = async () => {
     try {
-      await AsyncStorage.setItem("userType", userType);
+      await AsyncStorage.setItem("userType", formData.userType);
       await AsyncStorage.setItem("name", formData.name);
       await AsyncStorage.setItem("mobileNumber", formData.mobileNumber);
-      console.log("user", userType);
+
       if(userType === "User") {
         navigation.push("/UserDetailScreen");
       } else {
@@ -143,6 +144,15 @@ const Register = () => {
               placeholderTextColor={"#adadadff"}
               onChangeText={(value) =>
                 setFormData({ ...formData, name: value })
+              }
+            ></TextInput>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Enter Your Age"
+              placeholderTextColor={"#adadadff"}
+              onChangeText={(value) =>
+                setFormData({ ...formData, age: value } as any)
               }
             ></TextInput>
             <View>

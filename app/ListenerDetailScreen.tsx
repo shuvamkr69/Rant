@@ -110,13 +110,12 @@ const ListenerDetailScreen = () => {
         Alert.alert("Error", "Please fill in all required fields");
         return;
       }
-      console.log
 
       // Create FormData for multipart/form-data request
       const formDataToSend = new FormData();
       formDataToSend.append('name', formData.name);
       formDataToSend.append('mobileNumber', formData.mobileNumber);
-      formDataToSend.append('userType', formData.userType);
+      formDataToSend.append('userType', userType);
       formDataToSend.append('charge', charge.toString());
       formDataToSend.append('bio', bio);
       formDataToSend.append('occupation', occupation);

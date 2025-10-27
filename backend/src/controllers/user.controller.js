@@ -32,10 +32,14 @@ export const fetchUserStats = async (req, res) => {
 
 
 export const registerUser = async (req, res) => {
-  const { name, mobileNumber, userType, charge, bio, occupation } = req.body;
+  const { name, mobileNumber, userType, age, charge, bio, occupation } = req.body;
 
   if (!name || !mobileNumber) {
     return res.status(400).json({ message: "All fields are required" });
+  }
+
+  if(!age || age < 18){
+    return res.status(400).json({ message: "You must be at least 18 years old to register." });
   }
 
   if (await User.findOne({ mobileNumber })) {
@@ -54,6 +58,7 @@ export const registerUser = async (req, res) => {
     name,
     mobileNumber,
     userType: userType || "User",
+    age,
     charge,
     bio,
     occupation,
@@ -147,6 +152,7 @@ export const fetchWalletBalance = async (req, res) => {
       stats = await ListenerStats.create({ userId });
       console.log(`✅ Created new ListenerStats for ${userId}`);
     }
+    res.status(200).json({ walletBalance: stats.walletBalance });
   } else {
     stats = await UserStats.findOne({ userId });
     // Create stats if they don't exist
@@ -154,9 +160,73 @@ export const fetchWalletBalance = async (req, res) => {
       stats = await UserStats.create({ userId });
       console.log(`✅ Created new UserStats for ${userId}`);
     }
+    
+    // Check if monthly limit needs reset
+    const now = new Date();
+    const lastReset = new Date(stats.lastWordResetDate);
+    const daysSinceReset = Math.floor((now - lastReset) / (1000 * 60 * 60 * 24));
+    
+    // Reset if it's been 30+ days
+    if (daysSinceReset >= 30) {
+      stats.wordsUsedThisMonth = 0;
+      stats.lastWordResetDate = now;
+      await stats.save();
+      console.log(`🔄 Word count reset for user ${userId}`);
+    }
+    
+    res.status(200).json({ 
+      walletBalance: stats.walletBalance,
+      wordsUsed: stats.wordsUsedThisMonth,
+      wordLimit: stats.monthlyWordLimit,
+      wordsRemaining: stats.monthlyWordLimit - stats.wordsUsedThisMonth,
+      lastWordResetDate: stats.lastWordResetDate,
+    });
   }
-  
-  res.status(200).json({ walletBalance: stats.walletBalance });
+};
+
+// Get word count status for user
+export const getWordCountStatus = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const user = await User.findById(userId);
+    
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    
+    // Only applicable for "User" type, not "Listener"
+    if (user.userType !== "User") {
+      return res.status(400).json({ message: "Word limits only apply to Users, not Listeners" });
+    }
+    
+    let stats = await UserStats.findOne({ userId });
+    if (!stats) {
+      stats = await UserStats.create({ userId });
+    }
+    
+    // Check if monthly limit needs reset
+    const now = new Date();
+    const lastReset = new Date(stats.lastWordResetDate);
+    const daysSinceReset = Math.floor((now - lastReset) / (1000 * 60 * 60 * 24));
+    
+    // Reset if it's been 30+ days
+    if (daysSinceReset >= 30) {
+      stats.wordsUsedThisMonth = 0;
+      stats.lastWordResetDate = now;
+      await stats.save();
+    }
+    
+    res.status(200).json({
+      wordsUsed: stats.wordsUsedThisMonth,
+      wordLimit: stats.monthlyWordLimit,
+      wordsRemaining: Math.max(0, stats.monthlyWordLimit - stats.wordsUsedThisMonth),
+      lastWordResetDate: stats.lastWordResetDate,
+      daysUntilReset: Math.max(0, 30 - daysSinceReset),
+    });
+  } catch (error) {
+    console.error("❌ Error fetching word count status:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
 };
 
 const generateAccessAndRefreshTokens = async (userId) => {

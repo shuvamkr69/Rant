@@ -14,7 +14,6 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  Animated,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -30,38 +29,79 @@ export default function ChatScreen() {
     stopTyping,
     isPending,
     pendingMessage,
+    wordCountStatus,
+    sessionStartTime,
+    waitingForOtherUser,
   } = useChat();
   const { colorScheme } = useTheme();
-  const colors = Colors[colorScheme] as any;
+  const colors = Colors[colorScheme];
   const router = useRouter();
   const [inputMessage, setInputMessage] = useState("");
   const flatListRef = useRef<FlatList>(null);
   const typingTimeoutRef = useRef<any>(null);
   const [myProfileData, setMyProfileData] = useState<any>(null);
-  const animatedValuesRef = useRef<Map<string, Animated.Value>>(new Map());
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const [otherUserWordLimitExhausted, setOtherUserWordLimitExhausted] = useState(false);
 
   const fetchMyInfo = async () => {
     try {
       const response = await api.get("/api/v1/users/getBalance");
-      setMyProfileData({ walletBalance: response.data.walletBalance });
+      setMyProfileData({ 
+        walletBalance: response.data.walletBalance,
+        userType: response.data.userType, 
+      });
     } catch (error) {
       setMyProfileData({ walletBalance: 0 });
     }
   };
+
+  // Timer to track elapsed time
+  useEffect(() => {
+    if (!sessionStartTime) return;
+
+    const interval = setInterval(() => {
+      const now = new Date();
+      const elapsed = Math.floor((now.getTime() - new Date(sessionStartTime).getTime()) / 1000);
+      setElapsedTime(elapsed);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [sessionStartTime]);
+
+  // Format time as MM:SS or HH:MM:SS
+  const formatTime = (seconds: number) => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    if (hrs > 0) {
+      return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
   useEffect(() => {
     if (userId && socket) {
       loadChatHistory(userId as string);
-
+      
       // Join the room for session tracking
       console.log(`🚪 Joining room with user ${userId}`);
       socket.emit("join_room", { otherUserId: userId });
-
+      
       // Listen for room_joined confirmation
-      socket.once("room_joined", (data: any) => {});
+      socket.once("room_joined", (data: any) => {
+      });
+
+      // Listen for other user's word limit exhausted (for Listeners)
+      const handleOtherUserLimitExhausted = (data: any) => {
+        console.log("⚠️ Other user word limit exhausted:", data);
+        setOtherUserWordLimitExhausted(true);
+      };
+      
+      socket.on("other_user_word_limit_exhausted", handleOtherUserLimitExhausted);
 
       // Cleanup function - leave room when component unmounts
       return () => {
         socket.emit("leave_room", { otherUserId: userId });
+        socket.off("other_user_word_limit_exhausted", handleOtherUserLimitExhausted);
       };
     }
   }, [userId, socket]);
@@ -69,24 +109,9 @@ export default function ChatScreen() {
   useEffect(() => {
     fetchMyInfo();
   }, []);
-
   useEffect(() => {
+    // Scroll to bottom when new messages arrive
     if (messages.length > 0) {
-      messages.forEach((message, index) => {
-        if (!animatedValuesRef.current.has(message._id)) {
-          const animValue = new Animated.Value(0);
-          animatedValuesRef.current.set(message._id, animValue);
-          
-          Animated.spring(animValue, {
-            toValue: 1,
-            tension: 50,
-            friction: 7,
-            delay: index * 50,
-            useNativeDriver: true,
-          }).start();
-        }
-      });
-      
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
       }, 100);
@@ -123,56 +148,25 @@ export default function ChatScreen() {
     const isMyMessage =
       item.senderId._id === "me" || item.senderId._id !== userId;
 
-    const animValue = animatedValuesRef.current.get(item._id) || new Animated.Value(1);
-
-    const translateY = animValue.interpolate({
-      inputRange: [0, 1],
-      outputRange: [-20, 0],
-    });
-
-    const opacity = animValue.interpolate({
-      inputRange: [0, 1],
-      outputRange: [0, 1],
-    });
-
-    const scale = animValue.interpolate({
-      inputRange: [0, 1],
-      outputRange: [0.8, 1],
-    });
-
     return (
-      <Animated.View
+      <View
         style={[
           styles.messageContainer,
           isMyMessage ? styles.myMessage : styles.theirMessage,
-          {
-            opacity,
-            transform: [{ translateY }, { scale }],
-          },
         ]}
       >
         <View
           style={[
             styles.messageBubble,
             {
-              backgroundColor: isMyMessage
-                ? "#6b1fa8"
-                : colorScheme === "dark"
-                ? "#2a1040"
-                : "#e9d5f5",
+              backgroundColor: isMyMessage ? '#6b1fa8' : (colorScheme === 'dark' ? '#222' : '#E8E8E8'),
             },
           ]}
         >
           <Text
             style={[
               styles.messageText,
-              {
-                color: isMyMessage
-                  ? "#ffffff"
-                  : colorScheme === "dark"
-                  ? "#e9d5f5"
-                  : "#2a1040",
-              },
+              { color: isMyMessage ? '#ffffff' : (colorScheme === 'dark' ? '#fff' : '#000') },
             ]}
           >
             {item.message}
@@ -182,10 +176,8 @@ export default function ChatScreen() {
               styles.messageTime,
               {
                 color: isMyMessage
-                  ? "rgba(255,255,255,0.7)"
-                  : colorScheme === "dark"
-                  ? "rgba(233,213,245,0.6)"
-                  : "rgba(42,16,64,0.6)",
+                  ? 'rgba(255,255,255,0.7)'
+                  : (colorScheme === 'dark' ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)'),
               },
             ]}
           >
@@ -195,9 +187,11 @@ export default function ChatScreen() {
             })}
           </Text>
         </View>
-      </Animated.View>
+      </View>
     );
   };
+
+  
 
   return (
     <SafeAreaView
@@ -209,8 +203,8 @@ export default function ChatScreen() {
         style={[
           styles.header,
           {
-            backgroundColor: colors.background,
-            borderBottomColor: colors.icon,
+            backgroundColor: '#6b1fa8',
+            borderBottomColor: '#6b1fa8',
           },
         ]}
       >
@@ -218,17 +212,38 @@ export default function ChatScreen() {
           onPress={() => router.back()}
           style={styles.backButton}
         >
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
+          <Ionicons name="arrow-back" size={24} color="#ffffff" />
         </TouchableOpacity>
         <View style={styles.headerInfo}>
-          <Text style={[styles.headerName, { color: colors.text }]}>
+          <Text style={[styles.headerName, { color: '#ffffff' }]}>
             {name}
           </Text>
-          <Text style={styles.walletBalance}>
-            Balance: {myProfileData?.walletBalance}
-          </Text>
+          
+          {/* Word Count for Users */}
+          {wordCountStatus && (
+            <Text style={[styles.wordCount, { 
+              color: wordCountStatus.wordsRemaining < 1000 ? '#ff4444' : '#ffffff' 
+            }]}>
+              Words: {wordCountStatus.wordsRemaining.toLocaleString()} left
+            </Text>
+          )}
+          
+          {/* Waiting for other user indicator */}
+          {waitingForOtherUser && (
+            <Text style={[styles.waitingIndicator, { color: '#ffeb3b' }]}>
+              ⏳ Waiting for {name}...
+            </Text>
+          )}
+          
+          {/* Session Timer - only show when session has started */}
+          {sessionStartTime && !waitingForOtherUser && (
+            <Text style={[styles.sessionTimer, { color: '#ffffff' }]}>
+              ⏱️ {formatTime(elapsedTime)}
+            </Text>
+          )}
+          
           {isTyping && (
-            <Text style={[styles.typingIndicator, { color: colors.icon }]}>
+            <Text style={[styles.typingIndicator, { color: '#ffffff' }]}>
               typing...
             </Text>
           )}
@@ -244,6 +259,16 @@ export default function ChatScreen() {
           </Text>
           <Text style={[styles.pendingMessage, { color: colors.icon }]}>
             {pendingMessage}
+          </Text>
+        </View>
+      ) : waitingForOtherUser ? (
+        <View style={styles.pendingContainer}>
+          <Ionicons name="hourglass-outline" size={64} color="#6b1fa8" />
+          <Text style={[styles.pendingTitle, { color: colors.text }]}>
+            Waiting for {name} to join
+          </Text>
+          <Text style={[styles.pendingMessage, { color: colors.icon }]}>
+            The session will start once both of you are in the chat.
           </Text>
         </View>
       ) : (
@@ -268,43 +293,70 @@ export default function ChatScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
       >
+        {/* Word Limit Exhausted Banner */}
+        {(otherUserWordLimitExhausted || (wordCountStatus && wordCountStatus.wordsRemaining <= 0)) && (
+          <View style={styles.limitBanner}>
+            <Ionicons name="alert-circle" size={18} color="#6b1fa8" style={styles.limitBannerIcon} />
+            <Text style={[styles.limitBannerText, { color: colorScheme === 'dark' ? '#fff' : '#333' }]} numberOfLines={1}>
+              {wordCountStatus && wordCountStatus.wordsRemaining <= 0 
+                ? "You have no messages left this month"
+                : `${name} has no messages left this month`}
+            </Text>
+            
+          </View>
+        )}
+
         <View
           style={[
             styles.inputContainer,
-            { backgroundColor: colors.background, borderTopColor: "#6b1fa8" },
+            { backgroundColor: colors.background, borderTopColor: colors.icon },
           ]}
         >
           <TextInput
             style={[
               styles.input,
-              {
-                backgroundColor: colorScheme === "dark" ? "#2a1040" : "#f5ebfc",
-                color: colors.text,
-                borderWidth: 1,
-                borderColor: "#6b1fa8",
+              { 
+                backgroundColor: (otherUserWordLimitExhausted || (wordCountStatus && wordCountStatus.wordsRemaining <= 0) || waitingForOtherUser)
+                  ? (colorScheme === 'dark' ? '#1a1a1a' : '#d0d0d0')
+                  : (colorScheme === 'dark' ? '#222' : '#E8E8E8'),
+                color: (otherUserWordLimitExhausted || (wordCountStatus && wordCountStatus.wordsRemaining <= 0) || waitingForOtherUser)
+                  ? (colorScheme === 'dark' ? '#666' : '#999')
+                  : colors.text,
               },
             ]}
-            placeholder={isPending ? "Chat is pending..." : "Type a message..."}
-            placeholderTextColor={colorScheme === "dark" ? "#a56fcc" : "#8442b8"}
+            placeholder={
+              isPending 
+                ? "Chat is pending..." 
+                : waitingForOtherUser
+                  ? `Waiting for ${name} to join...`
+                : (otherUserWordLimitExhausted || (wordCountStatus && wordCountStatus.wordsRemaining <= 0))
+                  ? "Messages disabled - word limit reached"
+                  : "Type a message..."
+            }
+            placeholderTextColor={
+              (otherUserWordLimitExhausted || (wordCountStatus && wordCountStatus.wordsRemaining <= 0) || waitingForOtherUser)
+                ? (colorScheme === 'dark' ? '#555' : '#aaa')
+                : colors.icon
+            }
             value={inputMessage}
             onChangeText={handleTyping}
             multiline
             maxLength={500}
-            editable={!isPending}
+            editable={!isPending && !otherUserWordLimitExhausted && !(wordCountStatus && wordCountStatus.wordsRemaining <= 0) && !waitingForOtherUser}
           />
           <TouchableOpacity
             style={[
               styles.sendButton,
-              { backgroundColor: isPending ? "#ccc" : "#6b1fa8" },
+              { 
+                backgroundColor: (isPending || otherUserWordLimitExhausted || (wordCountStatus && wordCountStatus.wordsRemaining <= 0) || waitingForOtherUser)
+                  ? "#ccc" 
+                  : '#6b1fa8' 
+              },
             ]}
             onPress={handleSend}
-            disabled={isPending || !inputMessage.trim()}
+            disabled={isPending || !inputMessage.trim() || otherUserWordLimitExhausted || (wordCountStatus?.wordsRemaining ?? 1) <= 0 || waitingForOtherUser}
           >
-            <Ionicons
-              name="send"
-              size={20}
-              color="#ffffff"
-            />
+            <Ionicons name="send" size={20} color="#ffffff" />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -334,10 +386,26 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "600",
   },
+  wordCount: {
+    fontSize: 13,
+    fontWeight: "500",
+    marginLeft: 10,
+  },
+  sessionTimer: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginLeft: 10,
+  },
+  waitingIndicator: {
+    fontSize: 13,
+    fontWeight: "500",
+    marginLeft: 10,
+    fontStyle: "italic",
+  },
   walletBalance: {
     fontSize: 16,
     fontWeight: "500",
-    color: "#6b1fa8",
+    color: "#ffffffff",
   },
   typingIndicator: {
     fontSize: 12,
@@ -418,5 +486,31 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     justifyContent: "center",
     alignItems: "center",
+  },
+  limitBanner: {
+    backgroundColor: "transparent",
+    flexDirection: "row",
+    alignItems: "center",
+    borderColor: "#6b1fa8",
+    borderWidth: 1,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 30,
+    marginHorizontal: 10,
+    marginBottom: -1,
+    bottom: 5,
+  },
+  limitBannerIcon: {
+    marginRight: 10,
+  },
+  limitBannerText: {
+    flex: 1,
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  limitBannerClose: {
+    padding: 4,
+    marginLeft: 8,
   },
 });
