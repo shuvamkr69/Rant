@@ -14,6 +14,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Animated,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -31,12 +32,13 @@ export default function ChatScreen() {
     pendingMessage,
   } = useChat();
   const { colorScheme } = useTheme();
-  const colors = Colors[colorScheme];
+  const colors = Colors[colorScheme] as any;
   const router = useRouter();
   const [inputMessage, setInputMessage] = useState("");
   const flatListRef = useRef<FlatList>(null);
   const typingTimeoutRef = useRef<any>(null);
   const [myProfileData, setMyProfileData] = useState<any>(null);
+  const animatedValuesRef = useRef<Map<string, Animated.Value>>(new Map());
 
   const fetchMyInfo = async () => {
     try {
@@ -49,14 +51,13 @@ export default function ChatScreen() {
   useEffect(() => {
     if (userId && socket) {
       loadChatHistory(userId as string);
-      
+
       // Join the room for session tracking
       console.log(`🚪 Joining room with user ${userId}`);
       socket.emit("join_room", { otherUserId: userId });
-      
+
       // Listen for room_joined confirmation
-      socket.once("room_joined", (data: any) => {
-      });
+      socket.once("room_joined", (data: any) => {});
 
       // Cleanup function - leave room when component unmounts
       return () => {
@@ -68,9 +69,24 @@ export default function ChatScreen() {
   useEffect(() => {
     fetchMyInfo();
   }, []);
+
   useEffect(() => {
-    // Scroll to bottom when new messages arrive
     if (messages.length > 0) {
+      messages.forEach((message, index) => {
+        if (!animatedValuesRef.current.has(message._id)) {
+          const animValue = new Animated.Value(0);
+          animatedValuesRef.current.set(message._id, animValue);
+          
+          Animated.spring(animValue, {
+            toValue: 1,
+            tension: 50,
+            friction: 7,
+            delay: index * 50,
+            useNativeDriver: true,
+          }).start();
+        }
+      });
+      
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
       }, 100);
@@ -107,25 +123,56 @@ export default function ChatScreen() {
     const isMyMessage =
       item.senderId._id === "me" || item.senderId._id !== userId;
 
+    const animValue = animatedValuesRef.current.get(item._id) || new Animated.Value(1);
+
+    const translateY = animValue.interpolate({
+      inputRange: [0, 1],
+      outputRange: [-20, 0],
+    });
+
+    const opacity = animValue.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0, 1],
+    });
+
+    const scale = animValue.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0.8, 1],
+    });
+
     return (
-      <View
+      <Animated.View
         style={[
           styles.messageContainer,
           isMyMessage ? styles.myMessage : styles.theirMessage,
+          {
+            opacity,
+            transform: [{ translateY }, { scale }],
+          },
         ]}
       >
         <View
           style={[
             styles.messageBubble,
             {
-              backgroundColor: isMyMessage ? colors.tint : (colorScheme === 'dark' ? '#222' : '#E8E8E8'),
+              backgroundColor: isMyMessage
+                ? "#6b1fa8"
+                : colorScheme === "dark"
+                ? "#2a1040"
+                : "#e9d5f5",
             },
           ]}
         >
           <Text
             style={[
               styles.messageText,
-              { color: isMyMessage ? (colorScheme === 'dark' ? '#000' : '#000') : (colorScheme === 'dark' ? '#fff' : '#000') },
+              {
+                color: isMyMessage
+                  ? "#ffffff"
+                  : colorScheme === "dark"
+                  ? "#e9d5f5"
+                  : "#2a1040",
+              },
             ]}
           >
             {item.message}
@@ -135,8 +182,10 @@ export default function ChatScreen() {
               styles.messageTime,
               {
                 color: isMyMessage
-                  ? (colorScheme === 'dark' ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.6)')
-                  : (colorScheme === 'dark' ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)'),
+                  ? "rgba(255,255,255,0.7)"
+                  : colorScheme === "dark"
+                  ? "rgba(233,213,245,0.6)"
+                  : "rgba(42,16,64,0.6)",
               },
             ]}
           >
@@ -146,11 +195,9 @@ export default function ChatScreen() {
             })}
           </Text>
         </View>
-      </View>
+      </Animated.View>
     );
   };
-
-  
 
   return (
     <SafeAreaView
@@ -224,16 +271,21 @@ export default function ChatScreen() {
         <View
           style={[
             styles.inputContainer,
-            { backgroundColor: colors.background, borderTopColor: colors.icon },
+            { backgroundColor: colors.background, borderTopColor: "#6b1fa8" },
           ]}
         >
           <TextInput
             style={[
               styles.input,
-              { backgroundColor: colorScheme === 'dark' ? '#222' : '#E8E8E8', color: colors.text },
+              {
+                backgroundColor: colorScheme === "dark" ? "#2a1040" : "#f5ebfc",
+                color: colors.text,
+                borderWidth: 1,
+                borderColor: "#6b1fa8",
+              },
             ]}
             placeholder={isPending ? "Chat is pending..." : "Type a message..."}
-            placeholderTextColor={colors.icon}
+            placeholderTextColor={colorScheme === "dark" ? "#a56fcc" : "#8442b8"}
             value={inputMessage}
             onChangeText={handleTyping}
             multiline
@@ -243,12 +295,16 @@ export default function ChatScreen() {
           <TouchableOpacity
             style={[
               styles.sendButton,
-              { backgroundColor: isPending ? "#ccc" : colors.tint },
+              { backgroundColor: isPending ? "#ccc" : "#6b1fa8" },
             ]}
             onPress={handleSend}
             disabled={isPending || !inputMessage.trim()}
           >
-            <Ionicons name="send" size={20} color={colorScheme === 'dark' ? '#000' : '#000'} />
+            <Ionicons
+              name="send"
+              size={20}
+              color="#ffffff"
+            />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -281,7 +337,7 @@ const styles = StyleSheet.create({
   walletBalance: {
     fontSize: 16,
     fontWeight: "500",
-    color: "#ffffffff",
+    color: "#6b1fa8",
   },
   typingIndicator: {
     fontSize: 12,

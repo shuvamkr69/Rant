@@ -5,7 +5,6 @@ import { BackHandler, Platform } from "react-native";
 import { useTheme } from "@/components/contexts/ThemeContext";
 import { HapticTab } from "@/components/haptic-tab";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { Colors } from "@/constants/theme";
 
 export default function TabLayout() {
   const { colorScheme } = useTheme();
@@ -30,14 +29,23 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
+        tabBarActiveTintColor: "#a566daff",
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarStyle: {
           paddingVertical: 3,
           height: 55,
-          backgroundColor: Colors[colorScheme].background,
-          borderTopColor: Colors[colorScheme].icon,
+          backgroundColor: "#000000ff",
+          borderColor: "#6b1fa8",
+          borderWidth: 1,
+          borderRadius: 50,
+          position: "absolute",
+          margin: 10,
+          elevation: 5,
+          shadowColor: "#6b1fa8",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.7,
+          shadowRadius: 5,
         },
       }}
     >
