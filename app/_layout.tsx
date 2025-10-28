@@ -2,20 +2,20 @@ import { AuthProvider, useAuth } from "@/components/contexts/authContext";
 import { ChatProvider } from "@/components/contexts/chatContext";
 import { ThemeProvider, useTheme } from "@/components/contexts/ThemeContext";
 import {
-    DarkTheme,
-    ThemeProvider as NavigationThemeProvider
+  DarkTheme,
+  ThemeProvider as NavigationThemeProvider,
 } from "@react-navigation/native";
 import { BlurView } from "expo-blur";
 import * as NavigationBar from "expo-navigation-bar";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useState } from "react";
-import { Platform, StyleSheet } from "react-native";
+import { AppState, Platform, StyleSheet } from "react-native";
 import Animated, {
-    Easing,
-    useAnimatedStyle,
-    useSharedValue,
-    withTiming,
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
 } from "react-native-reanimated";
 
 export const unstable_settings = {
@@ -66,7 +66,10 @@ function BlurTransitionOverlay({ isVisible }: { isVisible: boolean }) {
   }
 
   return (
-    <Animated.View style={[styles.blurOverlay, animatedStyle]} pointerEvents="none">
+    <Animated.View
+      style={[styles.blurOverlay, animatedStyle]}
+      pointerEvents="none"
+    >
       <BlurView intensity={50} style={StyleSheet.absoluteFill} />
     </Animated.View>
   );
@@ -89,10 +92,19 @@ function RootNavigator() {
         await NavigationBar.setButtonStyleAsync("light");
         await NavigationBar.setVisibilityAsync("visible");
         await NavigationBar.setBehaviorAsync("inset-swipe");
-      } catch (e) {
-      }
+      } catch (e) {}
     };
     applyAndroidSystemBars();
+
+    const subscription = AppState.addEventListener("change", (nextAppState) => {
+      if (nextAppState === "active") {
+        applyAndroidSystemBars();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
   }, []);
 
   useEffect(() => {
@@ -111,9 +123,7 @@ function RootNavigator() {
   }
 
   return (
-    <NavigationThemeProvider
-      value={DarkTheme}
-    >
+    <NavigationThemeProvider value={DarkTheme}>
       {isSignedIn ? (
         <Stack
           screenOptions={{
@@ -154,7 +164,7 @@ function RootNavigator() {
       ) : (
         <Stack
           screenOptions={{
-            headerShown: false, 
+            headerShown: false,
             animation: "fade",
             animationDuration: 300,
             gestureEnabled: true,
@@ -190,6 +200,7 @@ function RootNavigator() {
         backgroundColor="#6b1fa8"
         translucent={false}
         hidden={false}
+        animated={true}
       />
     </NavigationThemeProvider>
   );

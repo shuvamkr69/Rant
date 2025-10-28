@@ -38,6 +38,20 @@ const sessionSchema = new mongoose.Schema(
       type: Boolean,
       default: false, // Prevents duplicate stat updates
     },
+    rated: {
+      type: Boolean,
+      default: false, // Tracks if user has rated this session
+    },
+    rating: {
+      type: Number,
+      min: 1,
+      max: 5,
+      default: null,
+    },
+    ratingComment: {
+      type: String,
+      default: null,
+    },
     // New fields for pause/resume tracking
     pausedAt: {
       type: Date,

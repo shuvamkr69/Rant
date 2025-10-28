@@ -279,131 +279,130 @@ export default function MyProfile() {
   }
 
   return (
-    <>
-    <TopBar />
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
+      <TopBar />
       {isLoading ? (
         <MyProfileSkeleton />
       ) : (
-        <SafeAreaView
-          style={[styles.container, { backgroundColor: colors.background }]}
+        <ScrollView
+          contentContainerStyle={{ paddingBottom: 40 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.tint}
+              colors={[colors.tint]}
+            />
+          }
         >
-          
-          <ScrollView
-            contentContainerStyle={{ paddingBottom: 40 }}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                tintColor={colors.tint}
-                colors={[colors.tint]}
-              />
-            }
-          >
-            <View style={styles.myProfilePage}>
-              <LinearGradient
-                colors={[TOPBAR_COLOR, "#7f2bb8"]}
-                style={[styles.imageContainer]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
+          <View style={styles.myProfilePage}>
+            <LinearGradient
+              colors={[TOPBAR_COLOR, "#7f2bb8"]}
+              style={[styles.imageContainer]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <Animated.View
+                style={[
+                  styles.profileImage,
+                  { transform: [{ scale: profileScale }] },
+                ]}
+              >
+                {profileImage ? (
+                  <Image
+                    source={{ uri: profileImage }}
+                    style={styles.profileImageActual}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View style={styles.profileImagePlaceholder}>
+                    <Text style={styles.placeholderText}>No Image</Text>
+                  </View>
+                )}
+              </Animated.View>
+            </LinearGradient>
+
             <Animated.View
               style={[
-                styles.profileImage,
-                { transform: [{ scale: profileScale }] },
+                styles.detailsContainer,
+                {
+                  backgroundColor: colors.background,
+                  opacity: detailsOpacity,
+                  transform: [{ translateY: detailsTranslate }],
+                },
               ]}
             >
-              {profileImage ? (
-                <Image
-                  source={{ uri: profileImage }}
-                  style={styles.profileImageActual}
-                  resizeMode="cover"
-                />
-              ) : (
-                <View style={styles.profileImagePlaceholder}>
-                  <Text style={styles.placeholderText}>No Image</Text>
-                </View>
-              )}
+              <Text style={[styles.detailHeading, { color: colors.text }]}>
+                {userProfileData?.name}
+              </Text>
+              <Text style={[styles.userTypeText, { color: TOPBAR_COLOR }]}>
+                {userProfileData?.userType}
+              </Text>
             </Animated.View>
-          </LinearGradient>
+          </View>
 
-          <Animated.View
-            style={[
-              styles.detailsContainer,
-              {
-                backgroundColor: colors.background,
-                opacity: detailsOpacity,
-                transform: [{ translateY: detailsTranslate }],
-              },
-            ]}
-          >
-            <Text style={[styles.detailHeading, { color: colors.text }]}>
-              {userProfileData?.name}
-            </Text>
-            <Text style={[styles.userTypeText, { color: TOPBAR_COLOR }]}>
-              {userProfileData?.userType}
-            </Text>
-          </Animated.View>
-        </View>
-
-        {/* Stats Section */}
-        <View style={{ width: "100%", paddingHorizontal: 20, marginTop: 20 }}>
-          <Text
-            style={{
-              fontSize: 24,
-              fontWeight: "bold",
-              color: colors.text,
-              marginBottom: 30,
-            }}
-          >
-            Your Stats
-          </Text>
-          {userStats && statsData.length > 0 ? (
-            <View>
-              {/* Circular Stats Grid */}
-              <View
-                style={{
-                  flexDirection: "row",
-                  flexWrap: "wrap",
-                  justifyContent: "space-between",
-                  marginBottom: 20,
-                }}
-              >
-                {statsData.map((item, index) => (
-                  <View
-                    key={index}
-                    style={{ width: "48%", alignItems: "center" }}
-                  >
-                    <CircularStat
-                      label={item.label}
-                      value={item.value}
-                      maxValue={item.maxValue}
-                      color={item.color}
-                      delay={index * 150}
-                    />
-                  </View>
-                ))}
-              </View>
-            </View>
-          ) : (
-            <View
+          {/* Stats Section */}
+          <View style={{ width: "100%", paddingHorizontal: 20, marginTop: 20 }}>
+            <Text
               style={{
-                backgroundColor: "#1a1a2e",
-                borderRadius: 16,
-                padding: 30,
-                alignItems: "center",
+                fontSize: 24,
+                fontWeight: "bold",
+                color: colors.text,
+                marginBottom: 30,
               }}
             >
-              <Text style={{ fontSize: 40, marginBottom: 10 }}>📈</Text>
-              <Text style={{ color: colors.text, fontSize: 16, opacity: 0.7 }}>
-                No stats available yet
-              </Text>
-            </View>
-          )}
-        </View>
-      </ScrollView>
-        </SafeAreaView>
+              Your Stats
+            </Text>
+            {userStats && statsData.length > 0 ? (
+              <View>
+                {/* Circular Stats Grid */}
+                <View
+                  style={{
+                    flexDirection: "row",
+                    flexWrap: "wrap",
+                    justifyContent: "space-between",
+                    marginBottom: 20,
+                  }}
+                >
+                  {statsData.map((item, index) => (
+                    <View
+                      key={index}
+                      style={{ width: "48%", alignItems: "center" }}
+                    >
+                      <CircularStat
+                        label={item.label}
+                        value={item.value}
+                        maxValue={item.maxValue}
+                        color={item.color}
+                        delay={index * 150}
+                      />
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : (
+              <View
+                style={{
+                  backgroundColor: "#1a1a2e",
+                  borderRadius: 16,
+                  padding: 30,
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ fontSize: 40, marginBottom: 10 }}>📈</Text>
+                <Text
+                  style={{ color: colors.text, fontSize: 16, opacity: 0.7 }}
+                >
+                  No stats available yet
+                </Text>
+              </View>
+            )}
+          </View>
+        </ScrollView>
       )}
-    </>
+    </SafeAreaView>
   );
 }
 

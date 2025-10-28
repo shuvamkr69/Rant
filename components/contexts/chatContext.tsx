@@ -50,6 +50,8 @@ type ChatContextType = {
   sessionDuration: number; // in seconds
   canRateListener: boolean;
   waitingForOtherUser: boolean;
+  currentSessionId: string | null;
+  resetRatingState: () => void;
 };
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -62,11 +64,13 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
   const [isTyping, setIsTyping] = useState(false);
   const [isPending, setIsPending] = useState(false);
   const [pendingMessage, setPendingMessage] = useState("");
-  const [wordCountStatus, setWordCountStatus] = useState<WordCountStatus | null>(null);
+  const [wordCountStatus, setWordCountStatus] =
+    useState<WordCountStatus | null>(null);
   const [sessionStartTime, setSessionStartTime] = useState<Date | null>(null);
   const [sessionDuration, setSessionDuration] = useState(0);
   const [canRateListener, setCanRateListener] = useState(false);
   const [waitingForOtherUser, setWaitingForOtherUser] = useState(false);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
 
   useEffect(() => {
     initSocket();
@@ -141,48 +145,77 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
       });
 
       // Session started/joined
-      newSocket.on("room_joined", (data: { sessionStartTime?: string; waitingForOtherUser?: boolean }) => {
-        console.log("🚪 Room joined, session data:", data);
-        if (data.sessionStartTime) {
-          setSessionStartTime(new Date(data.sessionStartTime));
-          setWaitingForOtherUser(false);
-        } else if (data.waitingForOtherUser) {
-          setWaitingForOtherUser(true);
-          setSessionStartTime(null);
+      newSocket.on(
+        "room_joined",
+        (data: {
+          sessionId?: string;
+          sessionStartTime?: string;
+          waitingForOtherUser?: boolean;
+        }) => {
+          console.log("🚪 Room joined, session data:", data);
+          if (data.sessionId) {
+            setCurrentSessionId(data.sessionId);
+          }
+          if (data.sessionStartTime) {
+            setSessionStartTime(new Date(data.sessionStartTime));
+            setWaitingForOtherUser(false);
+          } else if (data.waitingForOtherUser) {
+            setWaitingForOtherUser(true);
+            setSessionStartTime(null);
+          }
         }
-      });
+      );
 
       // Session actually started (when both users are present)
-      newSocket.on("session_started", (data: { sessionStartTime: string }) => {
-        console.log("🚀 Session started with both users:", data);
-        setSessionStartTime(new Date(data.sessionStartTime));
-        setWaitingForOtherUser(false);
-      });
+      newSocket.on(
+        "session_started",
+        (data: { sessionId: string; sessionStartTime: string }) => {
+          console.log("🚀 Session started with both users:", data);
+          setCurrentSessionId(data.sessionId);
+          setSessionStartTime(new Date(data.sessionStartTime));
+          setWaitingForOtherUser(false);
+        }
+      );
 
       // Session resumed (when user comes back)
-      newSocket.on("session_resumed", (data: { sessionStartTime: string }) => {
-        console.log("▶️ Session resumed:", data);
-        setSessionStartTime(new Date(data.sessionStartTime));
-        setWaitingForOtherUser(false);
-      });
+      newSocket.on(
+        "session_resumed",
+        (data: { sessionId: string; sessionStartTime: string }) => {
+          console.log("▶️ Session resumed:", data);
+          setCurrentSessionId(data.sessionId);
+          setSessionStartTime(new Date(data.sessionStartTime));
+          setWaitingForOtherUser(false);
+        }
+      );
 
       // Session ended
-      newSocket.on("session_ended", (data: { durationInSeconds: number; requestRating?: boolean }) => {
-        console.log("🏁 Session ended:", data);
-        setSessionDuration(data.durationInSeconds);
-        setSessionStartTime(null);
-        setWaitingForOtherUser(false);
-        if (data.requestRating) {
-          setCanRateListener(true);
+      newSocket.on(
+        "session_ended",
+        (data: {
+          sessionId: string;
+          durationInSeconds: number;
+          requestRating?: boolean;
+        }) => {
+          console.log("🏁 Session ended:", data);
+          setCurrentSessionId(data.sessionId);
+          setSessionDuration(data.durationInSeconds);
+          setSessionStartTime(null);
+          setWaitingForOtherUser(false);
+          if (data.requestRating) {
+            setCanRateListener(true);
+          }
         }
-      });
+      );
 
       // Session ended by other user
-      newSocket.on("session_ended_by_other", (data: { message: string; endedBy: string }) => {
-        console.log("🛑 Session ended by other user:", data);
-        setSessionStartTime(null);
-        setWaitingForOtherUser(true); // Show "waiting for other user" if they try to stay
-      });
+      newSocket.on(
+        "session_ended_by_other",
+        (data: { message: string; endedBy: string }) => {
+          console.log("🛑 Session ended by other user:", data);
+          setSessionStartTime(null);
+          setWaitingForOtherUser(true); // Show "waiting for other user" if they try to stay
+        }
+      );
 
       newSocket.on("error", (error: any) => {
         console.error("❌ Socket error:", error);
@@ -204,7 +237,6 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const sendMessage = (receiverId: string, message: string) => {
-
     if (!socket) {
       console.error("❌ Socket not connected! Trying to reconnect...");
       initSocket();
@@ -282,6 +314,12 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
     await initSocket();
   };
 
+  const resetRatingState = () => {
+    setCanRateListener(false);
+    setCurrentSessionId(null);
+    setSessionDuration(0);
+  };
+
   return (
     <ChatContext.Provider
       value={{
@@ -304,6 +342,8 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
         sessionDuration,
         canRateListener,
         waitingForOtherUser,
+        currentSessionId,
+        resetRatingState,
       }}
     >
       {children}

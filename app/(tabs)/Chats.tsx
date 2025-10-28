@@ -92,38 +92,39 @@ const Chats = () => {
   }, [matches]);
 
   return (
-    <>
-    <TopBar />
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
+      <TopBar />
       {isLoading ? (
         <ChatsScreenSkeleton />
       ) : (
-        <SafeAreaView
-          style={[styles.container, { backgroundColor: colors.background }]}
-        >
-          
-          <View style={styles.chatsContainer}>
-            <View style={styles.cardsContainer}>
-              <Text style={[styles.headingText, { color: colors.text }]}>
-                Chats
-              </Text>
+        <View style={styles.chatsContainer}>
+          <View style={styles.cardsContainer}>
+            <Text style={[styles.headingText, { color: colors.text }]}>
+              Chats
+            </Text>
 
-          {matches.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Text style={[styles.emptyText, { color: colors.icon }]}>
-                No listeners matched yet. Explore and connect with listeners to start
-                ranting!
-              </Text>
-            </View>
-          ) : (
-            <FlatList
-              data={matches}
-              keyExtractor={(item) => item._id}
+            {matches.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text style={[styles.emptyText, { color: colors.icon }]}>
+                  No listeners matched yet. Explore and connect with listeners
+                  to start ranting!
+                </Text>
+              </View>
+            ) : (
+              <FlatList
+                data={matches}
+                keyExtractor={(item) => item._id}
                 renderItem={({ item, index }) => {
                   // ensure animated values exist
                   if (!animatedMapRef.current.has(item._id)) {
                     const translate = new Animated.Value(-18);
                     const opacity = new Animated.Value(0);
-                    animatedMapRef.current.set(item._id, { translate, opacity });
+                    animatedMapRef.current.set(item._id, {
+                      translate,
+                      opacity,
+                    });
                   }
 
                   const anim = animatedMapRef.current.get(item._id);
@@ -155,7 +156,10 @@ const Chats = () => {
                             />
                           ) : (
                             <View
-                              style={[styles.avatar, { backgroundColor: colors.tint }]}
+                              style={[
+                                styles.avatar,
+                                { backgroundColor: colors.tint },
+                              ]}
                             >
                               <Text style={styles.avatarText}>
                                 {item.name?.charAt(0).toUpperCase()}
@@ -164,27 +168,32 @@ const Chats = () => {
                           )}
 
                           <View style={styles.chatInfo}>
-                            <Text style={[styles.chatName, { color: colors.text }]}> 
+                            <Text
+                              style={[styles.chatName, { color: colors.text }]}
+                            >
                               {item.name}
                             </Text>
-                            <Text style={[styles.chatType, { color: colors.icon }]}> 
+                            <Text
+                              style={[styles.chatType, { color: colors.icon }]}
+                            >
                               {item.userType}
                             </Text>
                           </View>
                         </View>
-                        <Text style={[styles.arrow, { color: colors.icon }]}>›</Text>
+                        <Text style={[styles.arrow, { color: colors.icon }]}>
+                          ›
+                        </Text>
                       </TouchableOpacity>
                     </Animated.View>
                   );
                 }}
-              contentContainerStyle={styles.listContent}
-            />
-          )}
+                contentContainerStyle={styles.listContent}
+              />
+            )}
+          </View>
         </View>
-      </View>
-        </SafeAreaView>
       )}
-    </>
+    </SafeAreaView>
   );
 };
 

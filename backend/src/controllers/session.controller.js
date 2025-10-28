@@ -5,7 +5,7 @@ import { Session } from "../models/session.model.js";
 export const getSessions = async (req, res) => {
   try {
     const { status, userId, listenerId, limit = 50 } = req.query;
-    
+
     const filter = {};
     if (status) filter.status = status;
     if (userId) filter.userId = userId;
@@ -79,7 +79,7 @@ export const getListenerStats = async (req, res) => {
     const { id } = req.params;
 
     const stats = await ListenerStats.findOne({ userId: id });
-    
+
     if (!stats) {
       return res.status(404).json({ message: "Listener stats not found" });
     }
@@ -88,9 +88,10 @@ export const getListenerStats = async (req, res) => {
     const enrichedStats = {
       ...stats.toObject(),
       uniqueUsersCount: stats.uniqueUsersListenedTo.length,
-      averageSessionDuration: stats.sessionsConducted > 0 
-        ? Math.round(stats.totalChatTime / stats.sessionsConducted) 
-        : 0,
+      averageSessionDuration:
+        stats.sessionsConducted > 0
+          ? Math.round(stats.totalChatTime / stats.sessionsConducted)
+          : 0,
     };
 
     res.status(200).json({ stats: enrichedStats });
@@ -107,7 +108,9 @@ export const submitRating = async (req, res) => {
     const { listenerId, sessionId, rating, comment } = req.body;
 
     if (!rating || rating < 1 || rating > 5) {
-      return res.status(400).json({ message: "Rating must be between 1 and 5" });
+      return res
+        .status(400)
+        .json({ message: "Rating must be between 1 and 5" });
     }
 
     // Verify the session exists and user was part of it
@@ -117,11 +120,22 @@ export const submitRating = async (req, res) => {
     }
 
     if (session.userId.toString() !== userId.toString()) {
-      return res.status(403).json({ message: "You can only rate sessions you participated in" });
+      return res
+        .status(403)
+        .json({ message: "You can only rate sessions you participated in" });
     }
 
     if (session.status !== "completed") {
-      return res.status(400).json({ message: "Can only rate completed sessions" });
+      return res
+        .status(400)
+        .json({ message: "Can only rate completed sessions" });
+    }
+
+    // Check if session has already been rated
+    if (session.rated) {
+      return res
+        .status(400)
+        .json({ message: "You have already rated this session" });
     }
 
     // Check if session duration is at least 30 minutes (1800 seconds)
@@ -129,7 +143,7 @@ export const submitRating = async (req, res) => {
     if (session.durationInSeconds < minDurationSeconds) {
       const minutesRequired = Math.ceil(minDurationSeconds / 60);
       const minutesActual = Math.floor(session.durationInSeconds / 60);
-      return res.status(400).json({ 
+      return res.status(400).json({
         message: `You must talk for at least ${minutesRequired} minutes to rate a listener. This session was ${minutesActual} minutes.`,
         minMinutes: minutesRequired,
         actualMinutes: minutesActual,
@@ -152,13 +166,20 @@ export const submitRating = async (req, res) => {
 
     // Update average rating
     const totalRatings = listenerStats.totalRatings + 1;
-    const currentTotal = listenerStats.averageRating * listenerStats.totalRatings;
+    const currentTotal =
+      listenerStats.averageRating * listenerStats.totalRatings;
     const newAverage = (currentTotal + rating) / totalRatings;
 
     listenerStats.totalRatings = totalRatings;
     listenerStats.averageRating = Math.round(newAverage * 10) / 10; // Round to 1 decimal
 
     await listenerStats.save();
+
+    // Mark session as rated
+    session.rated = true;
+    session.rating = rating;
+    session.ratingComment = comment || null;
+    await session.save();
 
     res.status(200).json({
       message: "Rating submitted successfully",

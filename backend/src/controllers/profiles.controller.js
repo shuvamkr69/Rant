@@ -1,3 +1,4 @@
+import { ListenerStats } from "../models/listenerStat.model.js";
 import { Profile } from "../models/profile.model.js";
 import { User } from "../models/user.model.js";
 
@@ -20,13 +21,42 @@ export const fetchProfiles = async (req, res) => {
       _id: {
         $nin: [...interactedUserIds, ownUserId],
       },
-      userType: targetUserType, 
-    }).select("-refreshToken -__v -createdAt -updatedAt -mobileNumber -password");
+      userType: targetUserType,
+    })
+      .select(
+        "-refreshToken -__v -createdAt -updatedAt -mobileNumber -password"
+      )
+      .lean(); // Use lean() for better performance
 
+    // Attach listener stats for Listener profiles
+    for (let profile of profiles) {
+      if (profile.userType === "Listener") {
+        const listenerStats = await ListenerStats.findOne({
+          userId: profile._id,
+        })
+          .select("averageRating totalRatings sessionsConducted")
+          .lean();
+
+        if (listenerStats) {
+          profile.listenerStats = {
+            averageRating: listenerStats.averageRating || 0,
+            totalRatings: listenerStats.totalRatings || 0,
+            sessionsConducted: listenerStats.sessionsConducted || 0,
+          };
+        } else {
+          // Default stats for new listeners
+          profile.listenerStats = {
+            averageRating: 0,
+            totalRatings: 0,
+            sessionsConducted: 0,
+          };
+        }
+      }
+    }
   } else if (currentUserType === "Listener") {
     const usersWhoAcceptedMe = await Profile.find({
-      otherUserId: ownUserId, 
-      Status: "accepted", 
+      otherUserId: ownUserId,
+      Status: "accepted",
     }).select("userId");
 
     const userIdsWhoAcceptedMe = usersWhoAcceptedMe.map(
@@ -64,7 +94,6 @@ export const fetchProfiles = async (req, res) => {
         );
       }
     }
-
   }
 
   res.status(200).send(profiles);

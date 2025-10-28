@@ -32,7 +32,7 @@ export const fetchUserStats = async (req, res) => {
 
 
 export const registerUser = async (req, res) => {
-  const { name, mobileNumber, userType, age, charge, bio, occupation } = req.body;
+  const { name, mobileNumber, userType, age, bio, occupation } = req.body;
 
   if (!name || !mobileNumber) {
     return res.status(400).json({ message: "All fields are required" });

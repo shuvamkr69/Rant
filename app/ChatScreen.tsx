@@ -1,6 +1,7 @@
 import { useChat } from "@/components/contexts/chatContext";
 import { useTheme } from "@/components/contexts/ThemeContext";
 import { useCustomAlert } from "@/components/resuables/CustomAlert";
+import RatingModal from "@/components/resuables/RatingModal";
 import { api } from "@/components/utils/api";
 import { Colors } from "@/constants/theme";
 import { Ionicons } from "@expo/vector-icons";
@@ -37,6 +38,9 @@ export default function ChatScreen() {
     wordCountStatus,
     sessionStartTime,
     waitingForOtherUser,
+    canRateListener,
+    currentSessionId,
+    resetRatingState,
   } = useChat();
   const { colorScheme } = useTheme();
   const colors = Colors;
@@ -51,9 +55,65 @@ export default function ChatScreen() {
     useState(false);
   const [isExiting, setIsExiting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [showRatingModal, setShowRatingModal] = useState(false);
 
   // Check if session is active (both users present and session has started)
-  const isSessionActive = sessionStartTime && !waitingForOtherUser && !isPending;
+  const isSessionActive =
+    sessionStartTime && !waitingForOtherUser && !isPending;
+
+  // Show rating modal when session ends and user can rate
+  useEffect(() => {
+    if (
+      canRateListener &&
+      currentSessionId &&
+      myProfileData?.userType === "User"
+    ) {
+      setShowRatingModal(true);
+    }
+  }, [canRateListener, currentSessionId, myProfileData]);
+
+  const handleSubmitRating = async (rating: number, comment: string) => {
+    try {
+      console.log("📝 Submitting rating:", {
+        rating,
+        comment,
+        sessionId: currentSessionId,
+        listenerId: userId,
+      });
+
+      const response = await api.post("/api/v1/sessions/rate", {
+        sessionId: currentSessionId,
+        listenerId: userId,
+        rating,
+        comment,
+      });
+
+      if (response.status === 200) {
+        showAlert(
+          "Rating Submitted",
+          "Thank you for rating your session!",
+          [{ text: "OK", style: "default" }],
+          { icon: "checkmark-circle", iconColor: "#4CAF50" }
+        );
+        setShowRatingModal(false);
+        resetRatingState();
+      }
+    } catch (error: any) {
+      console.error("❌ Error submitting rating:", error);
+      const errorMessage =
+        error.response?.data?.message ||
+        "Failed to submit rating. Please try again.";
+      showAlert("Error", errorMessage, [{ text: "OK", style: "default" }], {
+        icon: "alert-circle",
+        iconColor: "#ff5252",
+      });
+    }
+  };
+
+  const handleCloseRatingModal = () => {
+    setShowRatingModal(false);
+    resetRatingState();
+  };
 
   const fetchMyInfo = async () => {
     try {
@@ -70,9 +130,12 @@ export default function ChatScreen() {
   // Handle exit confirmation
   const handleExitSession = () => {
     if (isSessionActive && !isExiting) {
-      const message = elapsedTime < 1800 
-        ? `Your active session will end.\n\nNote: Sessions must be 30 minutes or longer to count towards your stats. This session has been running for ${formatTime(elapsedTime)}.`
-        : "Your active session will end.";
+      const message =
+        elapsedTime < 1800
+          ? `Your active session will end.\n\nNote: Sessions must be 30 minutes or longer to count towards your stats. This session has been running for ${formatTime(
+              elapsedTime
+            )}.`
+          : "Your active session will end.";
 
       showAlert(
         "End Session?",
@@ -133,16 +196,16 @@ export default function ChatScreen() {
   // Handle refresh when waiting for other user
   const handleRefresh = async () => {
     if (!waitingForOtherUser || !userId || !socket) return;
-    
+
     setRefreshing(true);
-    
+
     try {
       // Re-emit join_room to check if the other user has returned
       console.log(`🔄 Refreshing - re-joining room with user ${userId}`);
       socket.emit("join_room", { otherUserId: userId });
-      
+
       // Wait a bit for the response
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     } catch (error) {
       console.error("❌ Error refreshing:", error);
     } finally {
@@ -182,7 +245,11 @@ export default function ChatScreen() {
           `${name} has ended the session. You can leave the chat or wait for them to return.`,
           [
             { text: "Stay", style: "cancel" },
-            { text: "Leave Chat", style: "default", onPress: () => router.back() }
+            {
+              text: "Leave Chat",
+              style: "default",
+              onPress: () => router.back(),
+            },
           ],
           { icon: "information-circle", iconColor: "#6b1fa8" }
         );
@@ -289,9 +356,7 @@ export default function ChatScreen() {
           style={[
             styles.messageBubble,
             {
-              backgroundColor: isMyMessage
-                ? "#6b1fa8"
-                : "#222",
+              backgroundColor: isMyMessage ? "#6b1fa8" : "#222",
             },
           ]}
         >
@@ -299,9 +364,7 @@ export default function ChatScreen() {
             style={[
               styles.messageText,
               {
-                color: isMyMessage
-                  ? "#ffffff"
-                  : "#fff",
+                color: isMyMessage ? "#ffffff" : "#fff",
               },
             ]}
           >
@@ -460,23 +523,24 @@ export default function ChatScreen() {
         keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
       >
         {/* 30-minute session requirement info banner - only show for first 30 minutes and for listeners */}
-        {sessionStartTime && 
-         !waitingForOtherUser && 
-         elapsedTime < 1800 && 
-         elapsedTime > 0 && 
-         myProfileData?.userType === "Listener" && (
-          <View style={styles.infoBanner}>
-            <Ionicons
-              name="information-circle"
-              size={16}
-              color="#2196F3"
-              style={styles.infoBannerIcon}
-            />
-            <Text style={styles.infoBannerText}>
-              Session counts after 30 minutes ({Math.ceil((1800 - elapsedTime) / 60)} min left)
-            </Text>
-          </View>
-        )}
+        {sessionStartTime &&
+          !waitingForOtherUser &&
+          elapsedTime < 1800 &&
+          elapsedTime > 0 &&
+          myProfileData?.userType === "Listener" && (
+            <View style={styles.infoBanner}>
+              <Ionicons
+                name="information-circle"
+                size={16}
+                color="#2196F3"
+                style={styles.infoBannerIcon}
+              />
+              <Text style={styles.infoBannerText}>
+                Session counts after 30 minutes (
+                {Math.ceil((1800 - elapsedTime) / 60)} min left)
+              </Text>
+            </View>
+          )}
 
         {/* Word Limit Exhausted Banner */}
         {(otherUserWordLimitExhausted ||
@@ -489,10 +553,7 @@ export default function ChatScreen() {
               style={styles.limitBannerIcon}
             />
             <Text
-              style={[
-                styles.limitBannerText,
-                { color: "#fff" },
-              ]}
+              style={[styles.limitBannerText, { color: "#fff" }]}
               numberOfLines={1}
             >
               {wordCountStatus && wordCountStatus.wordsRemaining <= 0
@@ -583,6 +644,14 @@ export default function ChatScreen() {
 
       {/* Custom Alert Component */}
       <AlertComponent />
+
+      {/* Rating Modal */}
+      <RatingModal
+        visible={showRatingModal}
+        listenerName={name as string}
+        onClose={handleCloseRatingModal}
+        onSubmit={handleSubmitRating}
+      />
     </SafeAreaView>
   );
 }
@@ -622,7 +691,7 @@ const styles = StyleSheet.create({
   },
   timerContainer: {
     marginLeft: 10,
-    alignItems: 'flex-end',
+    alignItems: "flex-end",
   },
   sessionWarning: {
     fontSize: 10,

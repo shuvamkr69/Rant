@@ -121,151 +121,178 @@ export default function HomeScreen() {
   };
 
   return (
-    <>
-    <TopBar />
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
+      <TopBar />
       {isLoading ? (
         <HomeScreenSkeleton />
       ) : (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-          
-          <View style={styles.HomeScreen}>
-            {profiles.length > 0 ? (
-          <Swiper
-            cards={profiles}
-            renderCard={(card) => {
-              if (!card) {
+        <View style={styles.HomeScreen}>
+          {profiles.length > 0 ? (
+            <Swiper
+              cards={profiles}
+              renderCard={(card) => {
+                if (!card) {
+                  return (
+                    <View
+                      style={[
+                        styles.card,
+                        {
+                          backgroundColor: colors.background,
+                          borderColor: colors.icon,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[styles.profileCardText, { color: colors.text }]}
+                      >
+                        No more profiles
+                      </Text>
+                    </View>
+                  );
+                }
+
+                // Check if current user is "User" viewing "Listener"
+                const canSendPreMessage =
+                  currentUserType === "User" && card.userType === "Listener";
+
+                // Check if this is a Listener viewing a User with pre-match message
+                const hasPreMessage =
+                  currentUserType === "Listener" && card.preMatchMessage;
+
                 return (
                   <View
                     style={[
                       styles.card,
                       {
                         backgroundColor: colors.background,
-                        borderColor: colors.icon,
+                        borderColor: "#6b1fa8",
                       },
                     ]}
                   >
-                    <Text
-                      style={[styles.profileCardText, { color: colors.text }]}
+                    <Image
+                      source={{ uri: card.profileImage }}
+                      style={styles.profileImage}
+                    />
+                    <LinearGradient
+                      colors={[
+                        "transparent",
+                        "rgba(0,0,0,0.3)",
+                        "rgba(0,0,0,0.8)",
+                        "rgba(0,0,0,0.95)",
+                      ]}
+                      style={styles.profileInfoContainer}
                     >
-                      No more profiles
-                    </Text>
-                  </View>
-                );
-              }
+                      <Text
+                        style={[styles.profileCardText, { color: colors.text }]}
+                      >
+                        {card.name || card.username || " "} {card.age || " "}
+                      </Text>
+                      <Text
+                        style={[styles.occupationText, { color: colors.icon }]}
+                      >
+                        {card.occupation || " "}
+                      </Text>
 
-              // Check if current user is "User" viewing "Listener"
-              const canSendPreMessage =
-                currentUserType === "User" && card.userType === "Listener";
+                      {/* Show rating for Listeners */}
+                      {card.userType === "Listener" && card.listenerStats && (
+                        <View style={styles.ratingContainer}>
+                          <Ionicons name="star" size={16} color="#FFD700" />
+                          <Text style={styles.ratingText}>
+                            {card.listenerStats.averageRating > 0
+                              ? card.listenerStats.averageRating.toFixed(1)
+                              : "New"}{" "}
+                            {card.listenerStats.totalRatings > 0 && (
+                              <Text style={styles.ratingCountText}>
+                                ({card.listenerStats.totalRatings})
+                              </Text>
+                            )}
+                          </Text>
+                        </View>
+                      )}
 
-              // Check if this is a Listener viewing a User with pre-match message
-              const hasPreMessage =
-                currentUserType === "Listener" && card.preMatchMessage;
+                      <Text style={[styles.profileBio, { color: colors.text }]}>
+                        {card.bio || "No bio available"}
+                      </Text>
 
-              return (
-                <View
-                  style={[
-                    styles.card,
-                    {
-                      backgroundColor: colors.background,
-                      borderColor: "#6b1fa8",
-                    },
-                  ]}
-                >
-                  <Image
-                    source={{ uri: card.profileImage }}
-                    style={styles.profileImage}
-                  />
-                  <LinearGradient
-                    colors={['transparent', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.8)', 'rgba(0,0,0,0.95)']}
-                    style={styles.profileInfoContainer}
-                  >
-                    <Text
-                      style={[styles.profileCardText, { color: colors.text }]}
-                    >
-                      {card.name || card.username || " "}{" "}
-                      {card.age || " "}
-                    </Text>
-                    <Text style={[styles.occupationText, { color: colors.icon }]}>
-                      {card.occupation || " "}
-                    </Text>
-                    <Text style={[styles.profileBio, { color: colors.text }]}>
-                      {card.bio || "No bio available"}
-                    </Text>
+                      {hasPreMessage && (
+                        <View
+                          style={[
+                            styles.preMessageContainer,
+                            {
+                              backgroundColor: "#0f1a1f",
+                              borderLeftColor: colors.tint,
+                            },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.preMessageText,
+                              { color: colors.text },
+                            ]}
+                          >
+                            {card.preMatchMessage}
+                          </Text>
+                        </View>
+                      )}
+                    </LinearGradient>
 
-                    {hasPreMessage && (
-                      <View
+                    {canSendPreMessage && (
+                      <TouchableOpacity
                         style={[
-                          styles.preMessageContainer,
+                          styles.chatButton,
                           {
-                            backgroundColor: "#0f1a1f",
-                            borderLeftColor: colors.tint,
+                            backgroundColor: colors.background,
+                            borderColor: colors.icon,
                           },
                         ]}
+                        onPress={() => handleChatPress(card)}
                       >
-                        <Text
-                          style={[styles.preMessageText, { color: colors.text }]}
-                        >
-                          {card.preMatchMessage}
-                        </Text>
-                      </View>
+                        <Ionicons
+                          name="chatbubble-outline"
+                          size={30}
+                          color={"#6b1fa8"}
+                        />
+                      </TouchableOpacity>
                     )}
-                  </LinearGradient>
-
-                  {canSendPreMessage && (
-                    <TouchableOpacity
-                      style={[
-                        styles.chatButton,
-                        {
-                          backgroundColor: colors.background,
-                          borderColor: colors.icon,
-                        },
-                      ]}
-                      onPress={() => handleChatPress(card)}
-                    >
-                      <Ionicons
-                        name="chatbubble-outline"
-                        size={30}
-                        color={"#6b1fa8"}
-                      />
-                    </TouchableOpacity>
-                  )}
-                </View>
-              );
-            }}
-            cardIndex={currentIndex}
-            stackSize={3}
-            stackScale={10}
-            stackSeparation={15}
-            animateCardOpacity
-            showSecondCard={true}
-            infinite={false}
-            verticalSwipe={false}
-            horizontalSwipe={true}
-            backgroundColor="transparent"
-            onSwipedRight={handleSwipeRight}
-            onSwipedLeft={handleSwipeLeft}
-            onSwiped={(cardIndex) => {
-              setCurrentIndex(cardIndex + 1);
-            }}
-            onSwipedAll={() => {
-              fetchProfiles();
-            }}
-          />
-        ) : (
-          <View style={styles.noProfilesAvailable}>
-            <Image
-              source={require("@/assets/images/icons/404.png")}
-              style={styles.notFoundGif}
-              resizeMode="contain"
+                  </View>
+                );
+              }}
+              cardIndex={currentIndex}
+              stackSize={3}
+              stackScale={10}
+              stackSeparation={15}
+              animateCardOpacity
+              showSecondCard={true}
+              infinite={false}
+              verticalSwipe={false}
+              horizontalSwipe={true}
+              backgroundColor="transparent"
+              onSwipedRight={handleSwipeRight}
+              onSwipedLeft={handleSwipeLeft}
+              onSwiped={(cardIndex) => {
+                setCurrentIndex(cardIndex + 1);
+              }}
+              onSwipedAll={() => {
+                fetchProfiles();
+              }}
             />
-            <Text style={[styles.noProfilesText, { color: colors.text }]}>
-              No more profiles for now
-            </Text>
-          </View>
-        )}
-      </View>
+          ) : (
+            <View style={styles.noProfilesAvailable}>
+              <Image
+                source={require("@/assets/images/icons/404.png")}
+                style={styles.notFoundGif}
+                resizeMode="contain"
+              />
+              <Text style={[styles.noProfilesText, { color: colors.text }]}>
+                No more profiles for now
+              </Text>
+            </View>
+          )}
+        </View>
+      )}
 
-      {/* Pre-Match Message Modal */}
       <Modal
         visible={showMessageModal}
         transparent
@@ -316,7 +343,12 @@ export default function HomeScreen() {
                   setPreMatchMessage("");
                 }}
               >
-                <Text style={[styles.cancelButtonText, { color: colors.cancelButton }]}>
+                <Text
+                  style={[
+                    styles.cancelButtonText,
+                    { color: colors.cancelButton },
+                  ]}
+                >
                   Cancel
                 </Text>
               </TouchableOpacity>
@@ -329,12 +361,7 @@ export default function HomeScreen() {
                 ]}
                 onPress={handleSendMessageAndSwipeRight}
               >
-                <Text
-                  style={[
-                    styles.sendButtonText,
-                    { color: "#000" },
-                  ]}
-                >
+                <Text style={[styles.sendButtonText, { color: "#000" }]}>
                   Send
                 </Text>
               </TouchableOpacity>
@@ -342,9 +369,7 @@ export default function HomeScreen() {
           </View>
         </View>
       </Modal>
-        </SafeAreaView>
-      )}
-    </>
+    </SafeAreaView>
   );
 }
 
@@ -416,6 +441,23 @@ const styles = StyleSheet.create({
     color: "rgba(255, 255, 255, 0.85)",
     fontWeight: "400",
     marginTop: 10,
+  },
+  ratingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 6,
+    marginBottom: 4,
+  },
+  ratingText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#FFD700",
+    marginLeft: 5,
+  },
+  ratingCountText: {
+    fontSize: 14,
+    fontWeight: "400",
+    color: "rgba(255, 255, 255, 0.7)",
   },
   preMessageContainer: {
     marginTop: 10,
