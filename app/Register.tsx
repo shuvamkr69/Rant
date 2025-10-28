@@ -64,11 +64,12 @@ const Register = () => {
 
   const handleRegister = async () => {
     try {
-      await AsyncStorage.setItem("userType", formData.userType);
+      await AsyncStorage.setItem("userType", userType);
       await AsyncStorage.setItem("name", formData.name);
       await AsyncStorage.setItem("mobileNumber", formData.mobileNumber);
+      await AsyncStorage.setItem("age", formData.age.toString());
 
-      if(userType === "User") {
+      if (userType === "User") {
         navigation.push("/UserDetailScreen");
       } else {
         navigation.push("/ListenerDetailScreen");
@@ -164,7 +165,6 @@ const Register = () => {
                 onChangeText={(value) =>
                   setFormData({ ...formData, mobileNumber: value })
                 }
-                
               />
             </View>
           </View>

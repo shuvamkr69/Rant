@@ -3,7 +3,7 @@ import BackButton from "@/components/resuables/BackButton";
 import { api } from "@/components/utils/api";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as ImagePicker from 'expo-image-picker';
+import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -43,43 +43,43 @@ const ListenerDetailScreen = () => {
 
   const scale = useSharedValue(1);
 
-  const formData ={
+  const formData = {
     //setformdata is not being used because we are taking the initial form data from async storage
     userType: userType,
     name: "",
     mobileNumber: "",
-    charge: charge,
     bio: bio,
+    age: 0,
   };
 
   const { signIn } = useAuth();
   const navigation = useRouter();
 
-
-  
-
-  const handleImagePress = async() => {
+  const handleImagePress = async () => {
     scale.value = withSpring(0.95, {}, () => {
       scale.value = withSpring(1);
     });
-    
-    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    const permissionResult =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (permissionResult.granted === false) {
-      Alert.alert("Permission Denied", "Permission to access media library is required!");
+      Alert.alert(
+        "Permission Denied",
+        "Permission to access media library is required!"
+      );
       return;
     }
-    
+
     const result = await ImagePicker.launchImageLibraryAsync({
       allowsEditing: true,
       aspect: [1, 1], // Square aspect ratio for profile images
       quality: 0.8,
     });
 
-    if(!result.canceled && result.assets?.length > 0) {
+    if (!result.canceled && result.assets?.length > 0) {
       setProfileImage(result.assets[0].uri);
     }
   };
-  
 
   const detailsAsyncStorage = () => {
     AsyncStorage.getItem("userType").then((type) => {
@@ -90,6 +90,9 @@ const ListenerDetailScreen = () => {
     });
     AsyncStorage.getItem("mobileNumber").then((type) => {
       formData.mobileNumber = type as string;
+    });
+    AsyncStorage.getItem("age").then((type) => {
+      formData.age = parseInt(type as any);
     });
   };
 
@@ -113,31 +116,35 @@ const ListenerDetailScreen = () => {
 
       // Create FormData for multipart/form-data request
       const formDataToSend = new FormData();
-      formDataToSend.append('name', formData.name);
-      formDataToSend.append('mobileNumber', formData.mobileNumber);
-      formDataToSend.append('userType', userType);
-      formDataToSend.append('charge', charge.toString());
-      formDataToSend.append('bio', bio);
-      formDataToSend.append('occupation', occupation);
+      formDataToSend.append("name", formData.name);
+      formDataToSend.append("mobileNumber", formData.mobileNumber);
+      formDataToSend.append("userType", formData.userType);
+      formDataToSend.append("bio", bio);
+      formDataToSend.append("occupation", occupation);
+      formDataToSend.append("age", formData.age.toString());
 
       // Add profile image if selected
       if (profileImage) {
-        const filename = profileImage.split('/').pop();
-        const match = /\.(\w+)$/.exec(filename || '');
-        const type = match ? `image/${match[1]}` : 'image/jpeg';
+        const filename = profileImage.split("/").pop();
+        const match = /\.(\w+)$/.exec(filename || "");
+        const type = match ? `image/${match[1]}` : "image/jpeg";
 
-        formDataToSend.append('profileImage', {
+        formDataToSend.append("profileImage", {
           uri: profileImage,
-          name: filename || 'profile.jpg',
+          name: filename || "profile.jpg",
           type: type,
         } as any);
       }
 
-      const response = await api.post("/api/v1/users/register", formDataToSend, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const response = await api.post(
+        "/api/v1/users/register",
+        formDataToSend,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
 
       if (response.status === 201) {
         await AsyncStorage.removeItem("accessToken");
@@ -151,7 +158,11 @@ const ListenerDetailScreen = () => {
       }
     } catch (error: any) {
       console.log("The registration has failed:", error);
-      Alert.alert("Error", error?.response?.data?.message || "Registration failed. Please try again.");
+      Alert.alert(
+        "Error",
+        error?.response?.data?.message ||
+          "Registration failed. Please try again."
+      );
     }
   };
 
@@ -220,100 +231,6 @@ const ListenerDetailScreen = () => {
               entering={FadeInUp.duration(800).delay(400).springify()}
               style={styles.formSection}
             >
-              {/* Rate Slider */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>
-                  <Ionicons name="cash-outline" size={16} color="#c4b5fd" />{" "}
-                  Hourly Rate
-                </Text>
-
-                {/* Selected Rate Display */}
-                <View style={styles.rateDisplayContainer}>
-                  <LinearGradient
-                    colors={["#7c3aed", "#9333ea", "#a855f7"]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.rateDisplayGradient}
-                  >
-                    <Text style={styles.currencySymbolLarge}>₹</Text>
-                    <Text style={styles.rateValue}>
-                      {RATE_VALUES[rateIndex]}
-                    </Text>
-                    <Text style={styles.perHour}>/hour</Text>
-                  </LinearGradient>
-                </View>
-
-                {/* Custom Slider */}
-                <View style={styles.sliderContainer}>
-                  <View style={styles.sliderTrack}>
-                    <LinearGradient
-                      colors={[
-                        "rgba(139, 92, 246, 0.3)",
-                        "rgba(167, 139, 250, 0.3)",
-                      ]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={styles.sliderTrackGradient}
-                    >
-                      {/* Active Track */}
-                      <View
-                        style={[
-                          styles.activeTrack,
-                          {
-                            width: `${
-                              (rateIndex / (RATE_VALUES.length - 1)) * 100
-                            }%`,
-                          },
-                        ]}
-                      >
-                        <LinearGradient
-                          colors={["#7c3aed", "#a855f7"]}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 0 }}
-                          style={styles.activeTrackGradient}
-                        />
-                      </View>
-                    </LinearGradient>
-                  </View>
-
-                  {/* Rate Options */}
-                  <View style={styles.rateOptionsContainer}>
-                    {RATE_VALUES.map((value, index) => (
-                      <TouchableOpacity
-                        key={value}
-                        onPress={() => {setRateIndex(index); setCharge(RATE_VALUES[index])}}
-                        activeOpacity={0.7}
-                        style={styles.rateOption}
-                      >
-                        <View
-                          style={[
-                            styles.rateCircle,
-                            index === rateIndex && styles.rateCircleActive,
-                          ]}
-                        >
-                          {index === rateIndex && (
-                            <LinearGradient
-                              colors={["#7c3aed", "#a855f7"]}
-                              style={styles.rateCircleGradient}
-                            >
-                              <View style={styles.rateCircleInner} />
-                            </LinearGradient>
-                          )}
-                        </View>
-                        <Text
-                          style={[
-                            styles.rateOptionText,
-                            index === rateIndex && styles.rateOptionTextActive,
-                          ]}
-                        >
-                          ₹{value}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-              </View>
-
               {/* Specialization Input */}
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>

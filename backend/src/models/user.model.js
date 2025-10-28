@@ -5,14 +5,13 @@ const userSchema = new mongoose.Schema(
     name: { type: String, required: true },
     mobileNumber: { type: String, required: true, unique: true },
     userType: { type: String, enum: ["User", "Listener"], default: "User" },
-    age:{ type: Number, required: true }, // Age of the user
-    charge: { type: Number }, // Rate per minute for Listeners
+    age: { type: Number, required: true }, // Age of the user
     bio: { type: String }, // Bio/description for Listeners
     profileImage: { type: String }, // Cloudinary URL for profile image
     timings: { type: String }, // Available timings for Listeners
     daysAvailable: { type: [String] }, // Days available for Listeners
-    occupation: { type: String}, // Occupation of the Listener
-    comments: { type: [String]}, // Comments for the Listener
+    occupation: { type: String }, // Occupation of the Listener
+    comments: { type: [String] }, // Comments for the Listener
     refreshToken: { type: String },
   },
   { timestamps: true }

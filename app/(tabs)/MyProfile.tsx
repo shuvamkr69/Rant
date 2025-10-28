@@ -439,9 +439,9 @@ const styles = StyleSheet.create({
     opacity: 0.95,
   },
   profileImage: {
-    width: 150,
-    height: 150,
-    borderRadius: 75,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
     borderWidth: 4,
     borderColor: "#fff",
     backgroundColor: "#c4c4c4",

@@ -1,11 +1,14 @@
+import { useAuth } from "@/components/contexts/authContext";
 import BackButton from "@/components/resuables/BackButton";
 import { api } from "@/components/utils/api";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
+  Alert,
   Dimensions,
   Image,
   KeyboardAvoidingView,
@@ -21,7 +24,7 @@ import Animated, {
   FadeInUp,
   useAnimatedStyle,
   useSharedValue,
-  withSpring
+  withSpring,
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -34,14 +37,41 @@ const UserDetailScreen = () => {
   const [bio, setBio] = useState("");
   const [experience, setExperience] = useState("");
   const [specialization, setSpecialization] = useState("");
+  const [formData, setFormData] = useState({
+    userType: "",
+    name: "",
+    mobileNumber: "",
+    age: 0,
+  });
+  const navigation = useRouter();
+  const { signIn } = useAuth();
 
   const scale = useSharedValue(1);
 
-  const handleImagePress = () => {
+  const handleImagePress = async () => {
     scale.value = withSpring(0.95, {}, () => {
       scale.value = withSpring(1);
     });
-    console.log("Image picker to be implemented");
+
+    const permissionResult =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (permissionResult.granted === false) {
+      Alert.alert(
+        "Permission Denied",
+        "Permission to access media library is required!"
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: true,
+      aspect: [1, 1], // Square aspect ratio for profile images
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets?.length > 0) {
+      setProfileImage(result.assets[0].uri);
+    }
   };
 
   const animatedImageStyle = useAnimatedStyle(() => {
@@ -50,34 +80,90 @@ const UserDetailScreen = () => {
     };
   });
 
-  const detailsAsyncStorage = async() => {
+  const detailsAsyncStorage = async () => {
     try {
-      const userType =await AsyncStorage.getItem("userType")
-    const name = await AsyncStorage.getItem("name")
-    const mobileNumber = await AsyncStorage.getItem("mobileNumber")
+      AsyncStorage.getItem("userType").then((type) => {
+        formData.userType = type as "User" | "Listener";
+      });
+      AsyncStorage.getItem("name").then((type) => {
+        formData.name = type as string;
+      });
+      AsyncStorage.getItem("mobileNumber").then((type) => {
+        formData.mobileNumber = type as string;
+      });
+      AsyncStorage.getItem("age").then((type) => {
+        formData.age = parseInt(type as any);
+      });
     } catch (error) {
       console.log("Error retrieving user details from AsyncStorage:", error);
     }
-    
   };
 
   useEffect(() => {
     detailsAsyncStorage();
   }, []);
-  
-  const handleSubmit = async() => {
+
+  const handleSubmit = async () => {
     try {
-      const response = await api.post("/api/v1/users/register", {
-        profileImage,
-        bio,
-      });
-      if(response.status === 201){
-        console.log("Profile completed successfully");
+      // Validate required fields
+      if (!formData.name || !formData.mobileNumber || !formData.age || !bio) {
+        Alert.alert("Error", "Please fill in all required fields");
+        console.log(
+          "Validation failed: Missing required fields" +
+            JSON.stringify(formData)
+        );
+        return;
       }
-    } catch (error) {
-      
+
+      // Create FormData for multipart/form-data request
+      const formDataToSend = new FormData();
+      formDataToSend.append("name", formData.name);
+      formDataToSend.append("mobileNumber", formData.mobileNumber);
+      formDataToSend.append("age", formData.age as any); // Placeholder age
+      formDataToSend.append("userType", formData.userType);
+      formDataToSend.append("bio", bio);
+
+      // Add profile image if selected
+      if (profileImage) {
+        const filename = profileImage.split("/").pop();
+        const match = /\.(\w+)$/.exec(filename || "");
+        const type = match ? `image/${match[1]}` : "image/jpeg";
+
+        formDataToSend.append("profileImage", {
+          uri: profileImage,
+          name: filename || "profile.jpg",
+          type: type,
+        } as any);
+      }
+
+      const response = await api.post(
+        "/api/v1/users/register",
+        formDataToSend,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      if (response.status === 201) {
+        await AsyncStorage.removeItem("accessToken");
+        await AsyncStorage.removeItem("isSignedIn");
+        const newToken = response.data.accessToken;
+        await AsyncStorage.setItem("accessToken", newToken);
+
+        await signIn();
+        Alert.alert("Success", "Profile created successfully!");
+        navigation.replace("/(tabs)" as any);
+      }
+    } catch (error: any) {
+      console.log("The registration has failed:", error);
+      Alert.alert(
+        "Error",
+        error?.response?.data?.message ||
+          "Registration failed. Please try again."
+      );
     }
-    router.push("/(tabs)" as any);
   };
 
   return (
@@ -99,7 +185,6 @@ const UserDetailScreen = () => {
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
           >
-
             {/* Profile Image Section */}
             <Animated.View
               entering={FadeInUp.duration(800).delay(200).springify()}
@@ -137,9 +222,10 @@ const UserDetailScreen = () => {
                       <Ionicons name="camera" size={20} color="#ffffff" />
                     </LinearGradient>
                   </View>
-                  
                 </Animated.View>
-                <Text style={styles.imageInfo}>You can always add it later!</Text>
+                <Text style={styles.imageInfo}>
+                  You can always add it later!
+                </Text>
               </TouchableOpacity>
             </Animated.View>
 
@@ -148,7 +234,6 @@ const UserDetailScreen = () => {
               entering={FadeInUp.duration(800).delay(400).springify()}
               style={styles.formSection}
             >
-              
               {/* Bio Input */}
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>
@@ -302,7 +387,7 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: "#1a0033",
   },
-  imageInfo:{
+  imageInfo: {
     marginTop: 10,
     fontSize: 14,
     color: "#c4b5fd",
