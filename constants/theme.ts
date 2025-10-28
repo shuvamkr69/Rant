@@ -1,30 +1,24 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * Dark mode only theme with purplish tones for the app.
  */
 
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+// Purple/violet theme colors
+const tintColor = '#b794f6'; // Light purple
+const accentPurple = '#6b1fa8'; // Deep purple
 
 export const Colors = {
-  light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
-  },
-  dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
-  },
+  text: '#ECEDEE',
+  background: '#0f0a1a', // Dark purple-tinted background
+  tint: tintColor,
+  icon: '#9BA1A6',
+  cancelButton: '#1a1a2e',
+  tabIconDefault: '#6b5b7b',
+  tabIconSelected: tintColor,
+  accent: accentPurple,
+  cardBackground: '#1a1226',
+  border: '#2d1f3d',
 };
 
 export const Fonts = Platform.select({

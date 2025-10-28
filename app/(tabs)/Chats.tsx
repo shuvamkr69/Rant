@@ -20,7 +20,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 const Chats = () => {
   const { matches, loadMatches, setCurrentChatUser } = useChat();
   const { colorScheme } = useTheme();
-  const colors = Colors[colorScheme];
+  const colors = Colors;
   const router = useRouter();
   const animatedPlayed = useRef(false);
   const isFocusedRef = useRef(false);
@@ -93,13 +93,14 @@ const Chats = () => {
 
   return (
     <>
+    <TopBar />
       {isLoading ? (
         <ChatsScreenSkeleton />
       ) : (
         <SafeAreaView
           style={[styles.container, { backgroundColor: colors.background }]}
         >
-          <TopBar />
+          
           <View style={styles.chatsContainer}>
             <View style={styles.cardsContainer}>
               <Text style={[styles.headingText, { color: colors.text }]}>
@@ -138,8 +139,7 @@ const Chats = () => {
                         style={[
                           styles.card,
                           {
-                            backgroundColor:
-                              colorScheme === "dark" ? "#1b1226" : "#ffffff",
+                            backgroundColor: "#1b1226",
                             borderColor: TOPBAR_COLOR,
                           },
                         ]}

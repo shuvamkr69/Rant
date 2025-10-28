@@ -1,13 +1,13 @@
-import { useTheme } from '@/components/contexts/ThemeContext';
-import { Colors } from '@/constants/theme';
-import React, { useEffect, useRef } from 'react';
-import { Animated, Dimensions, Easing, StyleSheet, View } from 'react-native';
+import { useTheme } from "@/components/contexts/ThemeContext";
+import { Colors } from "@/constants/theme";
+import React, { useEffect, useRef } from "react";
+import { Animated, Dimensions, Easing, StyleSheet, View } from "react-native";
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
 const MyWalletSkeleton = () => {
   const { colorScheme } = useTheme();
-  const colors = Colors[colorScheme];
+  const colors = Colors;
   const shimmerAnimation = useRef(new Animated.Value(0)).current;
   const floatAnimation = useRef(new Animated.Value(0)).current;
 
@@ -57,19 +57,11 @@ const MyWalletSkeleton = () => {
     outputRange: [0, -15],
   });
 
-  const skeletonColor = colorScheme === 'dark' ? '#2a2a2a' : '#e0e0e0';
-  const cardColor = colorScheme === 'dark' ? '#1a1a1a' : '#f5f5f5';
+  const skeletonColor = "#2a2a2a";
+  const cardColor = "#1a1a1a";
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Top Bar Skeleton */}
-      <Animated.View
-        style={[
-          styles.topBar,
-          { backgroundColor: skeletonColor, opacity },
-        ]}
-      />
-
       <View style={styles.centeredContainer}>
         {/* Floating Card Skeleton */}
         <Animated.View
@@ -83,17 +75,11 @@ const MyWalletSkeleton = () => {
           ]}
         >
           <Animated.View
-            style={[
-              styles.card,
-              { backgroundColor: skeletonColor, opacity },
-            ]}
+            style={[styles.card, { backgroundColor: skeletonColor, opacity }]}
           >
             {/* Card chip */}
             <Animated.View
-              style={[
-                styles.cardChip,
-                { backgroundColor: cardColor, opacity },
-              ]}
+              style={[styles.cardChip, { backgroundColor: cardColor, opacity }]}
             />
 
             {/* Card number bars */}
@@ -181,27 +167,27 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   topBar: {
-    width: '100%',
+    width: "100%",
     height: 60,
     marginTop: 10,
   },
   centeredContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingVertical: 20,
   },
   cardContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginTop: screenHeight * 0.06,
   },
   card: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
     borderRadius: 20,
     padding: 24,
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
   },
   cardChip: {
     width: 50,
@@ -212,24 +198,24 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   cardNumber: {
-    width: '70%',
+    width: "70%",
     height: 20,
     borderRadius: 4,
   },
   balanceText: {
-    width: '50%',
+    width: "50%",
     height: 36,
     borderRadius: 6,
-    alignSelf: 'center',
+    alignSelf: "center",
   },
   buySection: {
-    width: '100%',
+    width: "100%",
     paddingHorizontal: 20,
-    alignItems: 'center',
+    alignItems: "center",
     gap: 16,
   },
   buyCardsContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 16,
     paddingHorizontal: 10,
   },
@@ -238,8 +224,8 @@ const styles = StyleSheet.create({
     height: 180,
     borderRadius: 16,
     padding: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     gap: 12,
   },
   buyCardIcon: {
@@ -248,17 +234,17 @@ const styles = StyleSheet.create({
     borderRadius: 30,
   },
   buyCardText: {
-    width: '70%',
+    width: "70%",
     height: 18,
     borderRadius: 4,
   },
   buyCardAmount: {
-    width: '50%',
+    width: "50%",
     height: 28,
     borderRadius: 6,
   },
   dotsContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
     marginTop: 8,
   },

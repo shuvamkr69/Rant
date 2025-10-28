@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 const MyWallet = () => {
   const [walletBalance, setWalletBalance] = useState<any>(null);
   const { colorScheme } = useTheme();
-  const colors = Colors[colorScheme];
+  const colors = Colors;
   const [isLoading, setIsLoading] = useState(true);
 
   const mockBuyData = [
@@ -49,9 +49,7 @@ const MyWallet = () => {
     }, [])
   );
 
-  const glassBg: [string, string] = colorScheme === 'dark'
-    ? ['rgba(20,20,20,0.7)', 'rgba(40,40,40,0.4)']
-    : ['rgba(255,255,255,0.7)', 'rgba(240,240,240,0.4)'];
+  const glassBg: [string, string] = ['rgba(20,20,20,0.7)', 'rgba(40,40,40,0.4)'];
 
   const animation = useRef(new Animated.Value(0)).current;
 
@@ -79,11 +77,12 @@ const MyWallet = () => {
 
   return (
     <>
+    <TopBar />
       {isLoading ? (
         <MyWalletSkeleton />
       ) : (
         <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-          <TopBar />
+          
           <View style={styles.centeredContainer}>
             <Animated.View style={{ transform: [{ translateY }], alignItems: 'center', justifyContent: 'center', width: '100%', position: 'absolute', top: screenHeight * 0.06, left: 0, right: 0, zIndex: 2 }}>
               <View style={[styles.cardContainer, { width: Math.min(screenWidth * 1.18, 800), height: Math.min(screenHeight * 0.54, 520) }]}> 

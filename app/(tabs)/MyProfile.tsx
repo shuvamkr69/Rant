@@ -123,7 +123,7 @@ const CircularStat = ({
 
 export default function MyProfile() {
   const { colorScheme } = useTheme();
-  const colors = Colors[colorScheme];
+  const colors = Colors;
   const TOPBAR_COLOR = "#6b1fa8";
   const [userProfileData, setUserProfileData] = useState<any>(null);
   const [userStats, setUserStats] = useState<any>(null);
@@ -234,7 +234,7 @@ export default function MyProfile() {
           color: "#4ECDC4",
         },
         {
-          label: "Time (min)",
+          label: "Time in minutes",
           value: Math.round(
             (userStats.totalChatTime || userStats.timeSpentListening || 0) / 60
           ),
@@ -269,7 +269,7 @@ export default function MyProfile() {
           color: "#45B7D1",
         },
         {
-          label: "Time (min)",
+          label: "Time in minutes",
           value: Math.round((userStats.totalSessionTime || 0) / 60),
           maxValue: 300,
           color: "#FFA07A",
@@ -280,13 +280,14 @@ export default function MyProfile() {
 
   return (
     <>
+    <TopBar />
       {isLoading ? (
         <MyProfileSkeleton />
       ) : (
         <SafeAreaView
           style={[styles.container, { backgroundColor: colors.background }]}
         >
-          <TopBar />
+          
           <ScrollView
             contentContainerStyle={{ paddingBottom: 40 }}
             refreshControl={
@@ -386,7 +387,7 @@ export default function MyProfile() {
           ) : (
             <View
               style={{
-                backgroundColor: colorScheme === "dark" ? "#1a1a2e" : "#f8f9fa",
+                backgroundColor: "#1a1a2e",
                 borderRadius: 16,
                 padding: 30,
                 alignItems: "center",

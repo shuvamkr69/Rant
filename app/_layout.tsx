@@ -3,8 +3,7 @@ import { ChatProvider } from "@/components/contexts/chatContext";
 import { ThemeProvider, useTheme } from "@/components/contexts/ThemeContext";
 import {
     DarkTheme,
-    DefaultTheme,
-    ThemeProvider as NavigationThemeProvider,
+    ThemeProvider as NavigationThemeProvider
 } from "@react-navigation/native";
 import { BlurView } from "expo-blur";
 import * as NavigationBar from "expo-navigation-bar";
@@ -113,7 +112,7 @@ function RootNavigator() {
 
   return (
     <NavigationThemeProvider
-      value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
+      value={DarkTheme}
     >
       {isSignedIn ? (
         <Stack

@@ -1,65 +1,17 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
-import { useColorScheme as useSystemColorScheme } from 'react-native';
-
-type ColorScheme = 'light' | 'dark' | 'auto';
+import React, { createContext, ReactNode, useContext } from 'react';
 
 interface ThemeContextType {
-  colorScheme: 'light' | 'dark';
-  themeMode: ColorScheme;
-  setThemeMode: (mode: ColorScheme) => void;
-  toggleTheme: () => void;
+  colorScheme: 'dark';
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
-  const systemColorScheme = useSystemColorScheme();
-  const [themeMode, setThemeModeState] = useState<ColorScheme>('auto');
-
-  useEffect(() => {
-    loadThemePreference();
-  }, []);
-
-  const loadThemePreference = async () => {
-    try {
-      const savedTheme = await AsyncStorage.getItem('themeMode');
-      if (savedTheme) {
-        setThemeModeState(savedTheme as ColorScheme);
-      }
-    } catch (error) {
-      console.error('Failed to load theme preference', error);
-    }
-  };
-
-  const setThemeMode = async (mode: ColorScheme) => {
-    try {
-      await AsyncStorage.setItem('themeMode', mode);
-      setThemeModeState(mode);
-    } catch (error) {
-      console.error('Failed to save theme preference', error);
-    }
-  };
-
-  const toggleTheme = () => {
-    const newMode = themeMode === 'dark' ? 'light' : 'dark';
-    setThemeMode(newMode);
-  };
-
-  const getActiveColorScheme = (): 'light' | 'dark' => {
-    if (themeMode === 'auto') {
-      return systemColorScheme === 'dark' ? 'dark' : 'light';
-    }
-    return themeMode;
-  };
-
+  // Always return dark mode
   return (
     <ThemeContext.Provider
       value={{
-        colorScheme: getActiveColorScheme(),
-        themeMode,
-        setThemeMode,
-        toggleTheme,
+        colorScheme: 'dark',
       }}
     >
       {children}

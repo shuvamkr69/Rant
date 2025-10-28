@@ -5,7 +5,7 @@ import { Animated, Easing, StyleSheet, View } from 'react-native';
 
 const ChatsScreenSkeleton = () => {
   const { colorScheme } = useTheme();
-  const colors = Colors[colorScheme];
+  const colors = Colors;
   const shimmerAnimation = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -32,8 +32,8 @@ const ChatsScreenSkeleton = () => {
     outputRange: [0.3, 0.7],
   });
 
-  const skeletonColor = colorScheme === 'dark' ? '#2a2a2a' : '#e0e0e0';
-  const cardColor = colorScheme === 'dark' ? '#1a1a1a' : '#f5f5f5';
+  const skeletonColor = '#2a2a2a';
+  const cardColor = '#1a1a1a';
 
   const ChatItemSkeleton = ({ delay = 0 }: { delay?: number }) => {
     const slideAnim = useRef(new Animated.Value(-20)).current;
@@ -105,13 +105,7 @@ const ChatsScreenSkeleton = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Top Bar Skeleton */}
-      <Animated.View
-        style={[
-          styles.topBar,
-          { backgroundColor: skeletonColor, opacity },
-        ]}
-      />
+ 
 
       {/* Header Text */}
       <View style={styles.header}>

@@ -11,7 +11,7 @@ import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 const TopBar = () => {
   const navigate = useNavigation<NavigationProp<RootStackParamList>>();
   const { colorScheme } = useTheme();
-  const colors = Colors[colorScheme];
+  const colors = Colors;
 
   const navigateToSettings = () => {
     navigate.navigate("Settings");

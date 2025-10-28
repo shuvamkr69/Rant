@@ -1,26 +1,18 @@
 import { useAuth } from "@/components/contexts/authContext";
 import { useChat } from "@/components/contexts/chatContext";
-import { useTheme } from "@/components/contexts/ThemeContext";
 import BackButton from "@/components/resuables/BackButton";
 import { api } from "@/components/utils/api";
 import { Colors } from "@/constants/theme";
 import { useRouter } from "expo-router";
 import React from "react";
-import { StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const Settings = () => {
   const navigation = useRouter();
-  const { colorScheme, themeMode, setThemeMode } = useTheme();
   const { signOut } = useAuth();
   const { socket } = useChat();
-  const colors = Colors[colorScheme];
-
-  const isDarkMode = colorScheme === "dark";
-
-  const handleThemeToggle = (value: boolean) => {
-    setThemeMode(value ? "dark" : "light");
-  };
+  const colors = Colors;
 
   const handleLogout = async () => {
     try {
@@ -57,22 +49,6 @@ const Settings = () => {
     >
       <BackButton screenName="Settings" />
       <View style={styles.content}>
-        <View style={styles.settingItem}>
-          <View style={styles.settingTextContainer}>
-            <Text style={[styles.settingLabel, { color: colors.text }]}>
-              Dark Mode
-            </Text>
-            <Text style={[styles.settingDescription, { color: colors.icon }]}>
-              Enable dark theme for the app
-            </Text>
-          </View>
-          <Switch
-            value={isDarkMode}
-            onValueChange={handleThemeToggle}
-            trackColor={{ false: "#767577", true: colors.tint }}
-            thumbColor={isDarkMode ? "#f4f3f4" : "#f4f3f4"}
-          />
-        </View>
         <TouchableOpacity
           style={styles.loginButton}
           activeOpacity={0.9}

@@ -7,7 +7,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const HomeScreenSkeleton = () => {
   const { colorScheme } = useTheme();
-  const colors = Colors[colorScheme];
+  const colors = Colors;
   const shimmerAnimation = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -34,17 +34,12 @@ const HomeScreenSkeleton = () => {
     outputRange: [0.3, 0.7],
   });
 
-  const skeletonColor = colorScheme === 'dark' ? '#2a2a2a' : '#e0e0e0';
+  const skeletonColor = '#2a2a2a';
+  const cardColor = '#1a1a1a';
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Top Bar Skeleton */}
-      <Animated.View
-        style={[
-          styles.topBar,
-          { backgroundColor: skeletonColor, opacity },
-        ]}
-      />
+
 
       {/* Main Card Skeleton */}
       <View style={styles.cardContainer}>
@@ -58,7 +53,7 @@ const HomeScreenSkeleton = () => {
           <Animated.View
             style={[
               styles.profileImage,
-              { backgroundColor: colorScheme === 'dark' ? '#1a1a1a' : '#f5f5f5', opacity },
+              { backgroundColor: cardColor, opacity },
             ]}
           />
 
@@ -67,19 +62,19 @@ const HomeScreenSkeleton = () => {
             <Animated.View
               style={[
                 styles.nameSkeleton,
-                { backgroundColor: colorScheme === 'dark' ? '#1a1a1a' : '#f5f5f5', opacity },
+                { backgroundColor: cardColor, opacity },
               ]}
             />
             <Animated.View
               style={[
                 styles.bioSkeleton,
-                { backgroundColor: colorScheme === 'dark' ? '#1a1a1a' : '#f5f5f5', opacity },
+                { backgroundColor: cardColor, opacity },
               ]}
             />
             <Animated.View
               style={[
                 styles.bioSkeleton,
-                { backgroundColor: colorScheme === 'dark' ? '#1a1a1a' : '#f5f5f5', opacity, width: '70%' },
+                { backgroundColor: cardColor, opacity, width: '70%' },
               ]}
             />
           </View>

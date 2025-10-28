@@ -1,11 +1,11 @@
-import { useTheme } from '@/components/contexts/ThemeContext';
-import { Colors } from '@/constants/theme';
-import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, ScrollView, StyleSheet, View } from 'react-native';
+import { useTheme } from "@/components/contexts/ThemeContext";
+import { Colors } from "@/constants/theme";
+import React, { useEffect, useRef } from "react";
+import { Animated, Easing, ScrollView, StyleSheet, View } from "react-native";
 
 const MyProfileSkeleton = () => {
   const { colorScheme } = useTheme();
-  const colors = Colors[colorScheme];
+  const colors = Colors;
   const shimmerAnimation = useRef(new Animated.Value(0)).current;
   const pulseAnimation = useRef(new Animated.Value(0)).current;
 
@@ -55,8 +55,8 @@ const MyProfileSkeleton = () => {
     outputRange: [0.95, 1.0],
   });
 
-  const skeletonColor = colorScheme === 'dark' ? '#2a2a2a' : '#e0e0e0';
-  const cardColor = colorScheme === 'dark' ? '#1a1a1a' : '#f5f5f5';
+  const skeletonColor = "#2a2a2a";
+  const cardColor = "#1a1a1a";
 
   const CircularStatSkeleton = ({ delay = 0 }: { delay?: number }) => {
     const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -72,13 +72,13 @@ const MyProfileSkeleton = () => {
 
     return (
       <Animated.View
-        style={[styles.circularStat, { opacity: fadeAnim, transform: [{ scale }] }]}
+        style={[
+          styles.circularStat,
+          { opacity: fadeAnim, transform: [{ scale }] },
+        ]}
       >
         <Animated.View
-          style={[
-            styles.circle,
-            { backgroundColor: skeletonColor, opacity },
-          ]}
+          style={[styles.circle, { backgroundColor: skeletonColor, opacity }]}
         />
         <Animated.View
           style={[
@@ -92,21 +92,17 @@ const MyProfileSkeleton = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Top Bar Skeleton */}
-      <Animated.View
-        style={[
-          styles.topBar,
-          { backgroundColor: skeletonColor, opacity },
-        ]}
-      />
-
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Profile Header */}
         <View style={styles.profileHeader}>
           <Animated.View
             style={[
               styles.profileImage,
-              { backgroundColor: skeletonColor, opacity, transform: [{ scale }] },
+              {
+                backgroundColor: skeletonColor,
+                opacity,
+                transform: [{ scale }],
+              },
             ]}
           />
           <Animated.View
@@ -184,12 +180,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   topBar: {
-    width: '100%',
+    width: "100%",
     height: 60,
     marginTop: 10,
   },
   profileHeader: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: 24,
     gap: 12,
   },
@@ -220,13 +216,13 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   statsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    justifyContent: "space-around",
+    flexWrap: "wrap",
     gap: 16,
   },
   circularStat: {
-    alignItems: 'center',
+    alignItems: "center",
     gap: 8,
   },
   circle: {
@@ -245,8 +241,8 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   infoCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 16,
     borderRadius: 12,
     gap: 16,
@@ -261,12 +257,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   infoTitle: {
-    width: '40%',
+    width: "40%",
     height: 16,
     borderRadius: 4,
   },
   infoValue: {
-    width: '60%',
+    width: "60%",
     height: 20,
     borderRadius: 4,
   },

@@ -34,7 +34,7 @@ export default function ChatScreen() {
     waitingForOtherUser,
   } = useChat();
   const { colorScheme } = useTheme();
-  const colors = Colors[colorScheme];
+  const colors = Colors;
   const router = useRouter();
   const [inputMessage, setInputMessage] = useState("");
   const flatListRef = useRef<FlatList>(null);
@@ -171,9 +171,7 @@ export default function ChatScreen() {
             {
               backgroundColor: isMyMessage
                 ? "#6b1fa8"
-                : colorScheme === "dark"
-                ? "#222"
-                : "#E8E8E8",
+                : "#222",
             },
           ]}
         >
@@ -183,9 +181,7 @@ export default function ChatScreen() {
               {
                 color: isMyMessage
                   ? "#ffffff"
-                  : colorScheme === "dark"
-                  ? "#fff"
-                  : "#000",
+                  : "#fff",
               },
             ]}
           >
@@ -197,9 +193,7 @@ export default function ChatScreen() {
               {
                 color: isMyMessage
                   ? "rgba(255,255,255,0.7)"
-                  : colorScheme === "dark"
-                  ? "rgba(255,255,255,0.6)"
-                  : "rgba(0,0,0,0.5)",
+                  : "rgba(255,255,255,0.6)",
               },
             ]}
           >
@@ -332,7 +326,7 @@ export default function ChatScreen() {
             <Text
               style={[
                 styles.limitBannerText,
-                { color: colorScheme === "dark" ? "#fff" : "#333" },
+                { color: "#fff" },
               ]}
               numberOfLines={1}
             >
@@ -357,19 +351,13 @@ export default function ChatScreen() {
                   otherUserWordLimitExhausted ||
                   (wordCountStatus && wordCountStatus.wordsRemaining <= 0) ||
                   waitingForOtherUser
-                    ? colorScheme === "dark"
-                      ? "#1a1a1a"
-                      : "#d0d0d0"
-                    : colorScheme === "dark"
-                    ? "#222"
-                    : "#E8E8E8",
+                    ? "#1a1a1a"
+                    : "#222",
                 color:
                   otherUserWordLimitExhausted ||
                   (wordCountStatus && wordCountStatus.wordsRemaining <= 0) ||
                   waitingForOtherUser
-                    ? colorScheme === "dark"
-                      ? "#666"
-                      : "#999"
+                    ? "#666"
                     : colors.text,
               },
             ]}
@@ -387,9 +375,7 @@ export default function ChatScreen() {
               otherUserWordLimitExhausted ||
               (wordCountStatus && wordCountStatus.wordsRemaining <= 0) ||
               waitingForOtherUser
-                ? colorScheme === "dark"
-                  ? "#555"
-                  : "#aaa"
+                ? "#555"
                 : colors.icon
             }
             value={inputMessage}

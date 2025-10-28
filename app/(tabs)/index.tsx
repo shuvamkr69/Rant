@@ -25,7 +25,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 export default function HomeScreen() {
   const { colorScheme } = useTheme();
-  const colors = Colors[colorScheme];
+  const colors = Colors;
   const [profiles, setProfiles] = useState<Array<any>>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentUserType, setCurrentUserType] = useState<string>("");
@@ -122,11 +122,12 @@ export default function HomeScreen() {
 
   return (
     <>
+    <TopBar />
       {isLoading ? (
         <HomeScreenSkeleton />
       ) : (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-          <TopBar />
+          
           <View style={styles.HomeScreen}>
             {profiles.length > 0 ? (
           <Swiper
@@ -181,11 +182,11 @@ export default function HomeScreen() {
                     <Text
                       style={[styles.profileCardText, { color: colors.text }]}
                     >
-                      {card.name || card.username || "Unknown"}{" "}
-                      {card.age || "N/A"}
+                      {card.name || card.username || " "}{" "}
+                      {card.age || " "}
                     </Text>
                     <Text style={[styles.occupationText, { color: colors.icon }]}>
-                      {card.occupation || "No occupation specified"}
+                      {card.occupation || " "}
                     </Text>
                     <Text style={[styles.profileBio, { color: colors.text }]}>
                       {card.bio || "No bio available"}
@@ -196,8 +197,7 @@ export default function HomeScreen() {
                         style={[
                           styles.preMessageContainer,
                           {
-                            backgroundColor:
-                              colorScheme === "dark" ? "#0f1a1f" : "#f0f8ff",
+                            backgroundColor: "#0f1a1f",
                             borderLeftColor: colors.tint,
                           },
                         ]}
@@ -277,9 +277,9 @@ export default function HomeScreen() {
             style={[
               styles.modalContent,
               {
-                backgroundColor: colors.background,
-                borderColor: colors.icon,
-                borderWidth: 1,
+                backgroundColor: "#271235ff",
+                borderColor: "#6b1fa8",
+                borderWidth: 2,
               },
             ]}
           >
@@ -294,7 +294,7 @@ export default function HomeScreen() {
             <TextInput
               style={[
                 styles.messageInput,
-                { color: colors.text, borderColor: colors.icon },
+                { color: colors.text, borderColor: "#6b1fa8" },
               ]}
               placeholder="Type your message..."
               placeholderTextColor={colors.icon}
@@ -316,7 +316,7 @@ export default function HomeScreen() {
                   setPreMatchMessage("");
                 }}
               >
-                <Text style={[styles.cancelButtonText, { color: colors.icon }]}>
+                <Text style={[styles.cancelButtonText, { color: colors.cancelButton }]}>
                   Cancel
                 </Text>
               </TouchableOpacity>
@@ -332,7 +332,7 @@ export default function HomeScreen() {
                 <Text
                   style={[
                     styles.sendButtonText,
-                    { color: colorScheme === "dark" ? "#000" : "#fff" },
+                    { color: "#000" },
                   ]}
                 >
                   Send
@@ -497,10 +497,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   cancelButton: {
-    backgroundColor: "#f0f0f0",
+    backgroundColor: "#ff6a6aff",
   },
   cancelButtonText: {
-    color: "#666",
+    color: "#000000ff",
     fontSize: 16,
     fontWeight: "600",
   },
