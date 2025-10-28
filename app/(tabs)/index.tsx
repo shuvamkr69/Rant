@@ -18,6 +18,7 @@ import {
 } from "react-native";
 import Swiper from "react-native-deck-swiper";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -66,7 +67,6 @@ export default function HomeScreen() {
     try {
       const swipedProfile = profiles[cardIndex];
 
-
       const response = await api.post("/api/v1/users/accept", {
         otherUserId: swipedProfile?._id,
         preMatchMessage: preMatchMessage || null, // Send pre-match message if exists
@@ -110,15 +110,15 @@ export default function HomeScreen() {
       const response = await api.post("/api/v1/users/reject", {
         otherUserId: swipedProfile?._id,
       });
-
-   
     } catch (error) {
       console.error("❌ Error rejecting profile:", error);
     }
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
       <TopBar />
       <View style={styles.HomeScreen}>
         {profiles.length > 0 ? (
@@ -127,8 +127,20 @@ export default function HomeScreen() {
             renderCard={(card) => {
               if (!card) {
                 return (
-                  <View style={[styles.card, { backgroundColor: colors.background, borderColor: colors.icon }]}>
-                    <Text style={[styles.profileCardText, { color: colors.text }]}>No more profiles</Text>
+                  <View
+                    style={[
+                      styles.card,
+                      {
+                        backgroundColor: colors.background,
+                        borderColor: colors.icon,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[styles.profileCardText, { color: colors.text }]}
+                    >
+                      No more profiles
+                    </Text>
                   </View>
                 );
               }
@@ -142,26 +154,65 @@ export default function HomeScreen() {
                 currentUserType === "Listener" && card.preMatchMessage;
 
               return (
-                <View style={[styles.card, { backgroundColor: colors.background, borderColor:"#6b1fa8" }]}>
-                  <Image source = {{uri: card.profileImage}} style = {styles.profileImage}/>
-                  <Text style={[styles.profileCardText, { color: colors.text }]}>
-                    {card.name || card.username || "Unknown"}
-                  </Text>
+                <View
+                  style={[
+                    styles.card,
+                    {
+                      backgroundColor: colors.background,
+                      borderColor: "#6b1fa8",
+                    },
+                  ]}
+                >
+                  <Image
+                    source={{ uri: card.profileImage }}
+                    style={styles.profileImage}
+                  />
+                  <LinearGradient
+                    colors={['transparent', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.8)', 'rgba(0,0,0,0.95)']}
+                    style={styles.profileInfoContainer}
+                  >
+                    <Text
+                      style={[styles.profileCardText, { color: colors.text }]}
+                    >
+                      {card.name || card.username || "Unknown"}{" "}
+                      {card.age || "N/A"}
+                    </Text>
+                    <Text style={[styles.occupationText, { color: colors.icon }]}>
+                      {card.occupation || "No occupation specified"}
+                    </Text>
+                    <Text style={[styles.profileBio, { color: colors.text }]}>
+                      {card.bio || "No bio available"}
+                    </Text>
 
-                  {/* Show pre-match message if Listener is viewing User's card */}
-                  {hasPreMessage && (
-                    <View style={[styles.preMessageContainer, { backgroundColor: colorScheme === 'dark' ? '#0f1a1f' : '#f0f8ff', borderLeftColor: colors.tint }]}>
-                      
-                      <Text style={[styles.preMessageText, { color: colors.text }]}>
-                        {card.preMatchMessage}
-                      </Text>
-                    </View>
-                  )}
+                    {hasPreMessage && (
+                      <View
+                        style={[
+                          styles.preMessageContainer,
+                          {
+                            backgroundColor:
+                              colorScheme === "dark" ? "#0f1a1f" : "#f0f8ff",
+                            borderLeftColor: colors.tint,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[styles.preMessageText, { color: colors.text }]}
+                        >
+                          {card.preMatchMessage}
+                        </Text>
+                      </View>
+                    )}
+                  </LinearGradient>
 
-                  {/* Show chat button if User is viewing Listener */}
                   {canSendPreMessage && (
                     <TouchableOpacity
-                      style={[styles.chatButton, { backgroundColor: colors.background, borderColor: colors.icon }]}
+                      style={[
+                        styles.chatButton,
+                        {
+                          backgroundColor: colors.background,
+                          borderColor: colors.icon,
+                        },
+                      ]}
                       onPress={() => handleChatPress(card)}
                     >
                       <Ionicons
@@ -195,8 +246,8 @@ export default function HomeScreen() {
           />
         ) : (
           <View style={styles.noProfilesAvailable}>
-            <Image 
-              source={require('@/assets/images/icons/404.png')} 
+            <Image
+              source={require("@/assets/images/icons/404.png")}
               style={styles.notFoundGif}
               resizeMode="contain"
             />
@@ -215,16 +266,29 @@ export default function HomeScreen() {
         onRequestClose={() => setShowMessageModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: colors.background, borderColor: colors.icon, borderWidth: 1 }]}>
+          <View
+            style={[
+              styles.modalContent,
+              {
+                backgroundColor: colors.background,
+                borderColor: colors.icon,
+                borderWidth: 1,
+              },
+            ]}
+          >
             <Text style={[styles.modalTitle, { color: colors.text }]}>
               Send a message to {selectedProfile?.name}
             </Text>
             <Text style={[styles.modalSubtitle, { color: colors.icon }]}>
-              Send an introductory message. Please wait for the listener to accept.
+              Send an introductory message. Please wait for the listener to
+              accept.
             </Text>
 
             <TextInput
-              style={[styles.messageInput, { color: colors.text, borderColor: colors.icon }]}
+              style={[
+                styles.messageInput,
+                { color: colors.text, borderColor: colors.icon },
+              ]}
               placeholder="Type your message..."
               placeholderTextColor={colors.icon}
               multiline
@@ -233,7 +297,9 @@ export default function HomeScreen() {
               onChangeText={setPreMatchMessage}
             />
 
-            <Text style={[styles.charCount, { color: colors.icon }]}>{preMatchMessage.length}/200</Text>
+            <Text style={[styles.charCount, { color: colors.icon }]}>
+              {preMatchMessage.length}/200
+            </Text>
 
             <View style={styles.modalButtons}>
               <TouchableOpacity
@@ -243,14 +309,27 @@ export default function HomeScreen() {
                   setPreMatchMessage("");
                 }}
               >
-                <Text style={[styles.cancelButtonText, { color: colors.icon }]}>Cancel</Text>
+                <Text style={[styles.cancelButtonText, { color: colors.icon }]}>
+                  Cancel
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.modalButton, styles.sendButton, { backgroundColor: colors.tint }]}
+                style={[
+                  styles.modalButton,
+                  styles.sendButton,
+                  { backgroundColor: colors.tint },
+                ]}
                 onPress={handleSendMessageAndSwipeRight}
               >
-                <Text style={[styles.sendButtonText, { color: colorScheme === 'dark' ? '#000' : '#fff' }]}>Send & Like</Text>
+                <Text
+                  style={[
+                    styles.sendButtonText,
+                    { color: colorScheme === "dark" ? "#000" : "#fff" },
+                  ]}
+                >
+                  Send
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -280,48 +359,66 @@ const styles = StyleSheet.create({
     borderColor: "#6b1fa8",
     justifyContent: "flex-end",
     backgroundColor: "white",
-    padding: 20,
+    overflow: "hidden",
     shadowColor: "#6b1fa8",
     shadowOffset: {
-      width: 0, height: 8,
+      width: 0,
+      height: 8,
     },
     shadowOpacity: 0.25,
     shadowRadius: 10,
     elevation: 10,
   },
-  profileImage:{
-    width: '100%',
-    height: '75%',
-    alignSelf: 'center',
-    resizeMode: 'cover',
-    borderRadius: 15,
-    marginBottom: 15,
+  profileImage: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
+  },
+  profileInfoContainer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 20,
+    paddingTop: 60,
+    borderBottomLeftRadius: 18,
+    borderBottomRightRadius: 18,
   },
   profileCardText: {
     textAlign: "left",
     fontSize: 32,
     fontWeight: "bold",
-    color: "black",
+    color: "white",
+    backgroundColor: "transparent",
+  },
+  occupationText: {
+    textAlign: "left",
+    fontSize: 20,
+    fontWeight: "500",
+    color: "rgba(255, 255, 255, 0.9)",
     backgroundColor: "transparent",
   },
   profileBio: {
-    textAlign: "center",
+    textAlign: "left",
     fontSize: 18,
-    color: "#666",
+    color: "rgba(255, 255, 255, 0.85)",
+    fontWeight: "400",
     marginTop: 10,
-    paddingHorizontal: 20,
   },
   preMessageContainer: {
-    marginTop: 20,
+    marginTop: 10,
     padding: 15,
-    backgroundColor: "#f0f8ff",
+    backgroundColor: "rgba(107, 31, 168, 0.2)",
     borderRadius: 10,
-    borderLeftColor: "#4CAF50",
-    width: "90%",
+    borderLeftWidth: 4,
+    borderLeftColor: "#6b1fa8",
   },
   preMessageText: {
     fontSize: 16,
-    color: "#333",
+    color: "white",
   },
   chatButton: {
     position: "absolute",
@@ -409,7 +506,7 @@ const styles = StyleSheet.create({
   noProfilesAvailable: {
     justifyContent: "center",
     alignItems: "center",
-    bottom: "5%",       //a bit of hardcoding aint kill no one
+    bottom: "5%", //a bit of hardcoding aint kill no one
   },
   notFoundGif: {
     width: SCREEN_WIDTH * 0.5,

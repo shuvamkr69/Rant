@@ -41,14 +41,15 @@ export default function ChatScreen() {
   const typingTimeoutRef = useRef<any>(null);
   const [myProfileData, setMyProfileData] = useState<any>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
-  const [otherUserWordLimitExhausted, setOtherUserWordLimitExhausted] = useState(false);
+  const [otherUserWordLimitExhausted, setOtherUserWordLimitExhausted] =
+    useState(false);
 
   const fetchMyInfo = async () => {
     try {
       const response = await api.get("/api/v1/users/getBalance");
-      setMyProfileData({ 
+      setMyProfileData({
         walletBalance: response.data.walletBalance,
-        userType: response.data.userType, 
+        userType: response.data.userType,
       });
     } catch (error) {
       setMyProfileData({ walletBalance: 0 });
@@ -61,7 +62,9 @@ export default function ChatScreen() {
 
     const interval = setInterval(() => {
       const now = new Date();
-      const elapsed = Math.floor((now.getTime() - new Date(sessionStartTime).getTime()) / 1000);
+      const elapsed = Math.floor(
+        (now.getTime() - new Date(sessionStartTime).getTime()) / 1000
+      );
       setElapsedTime(elapsed);
     }, 1000);
 
@@ -74,34 +77,41 @@ export default function ChatScreen() {
     const mins = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
     if (hrs > 0) {
-      return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+      return `${hrs}:${mins.toString().padStart(2, "0")}:${secs
+        .toString()
+        .padStart(2, "0")}`;
     }
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
   useEffect(() => {
     if (userId && socket) {
       loadChatHistory(userId as string);
-      
+
       // Join the room for session tracking
       console.log(`🚪 Joining room with user ${userId}`);
       socket.emit("join_room", { otherUserId: userId });
-      
+
       // Listen for room_joined confirmation
-      socket.once("room_joined", (data: any) => {
-      });
+      socket.once("room_joined", (data: any) => {});
 
       // Listen for other user's word limit exhausted (for Listeners)
       const handleOtherUserLimitExhausted = (data: any) => {
         console.log("⚠️ Other user word limit exhausted:", data);
         setOtherUserWordLimitExhausted(true);
       };
-      
-      socket.on("other_user_word_limit_exhausted", handleOtherUserLimitExhausted);
+
+      socket.on(
+        "other_user_word_limit_exhausted",
+        handleOtherUserLimitExhausted
+      );
 
       // Cleanup function - leave room when component unmounts
       return () => {
         socket.emit("leave_room", { otherUserId: userId });
-        socket.off("other_user_word_limit_exhausted", handleOtherUserLimitExhausted);
+        socket.off(
+          "other_user_word_limit_exhausted",
+          handleOtherUserLimitExhausted
+        );
       };
     }
   }, [userId, socket]);
@@ -159,14 +169,24 @@ export default function ChatScreen() {
           style={[
             styles.messageBubble,
             {
-              backgroundColor: isMyMessage ? '#6b1fa8' : (colorScheme === 'dark' ? '#222' : '#E8E8E8'),
+              backgroundColor: isMyMessage
+                ? "#6b1fa8"
+                : colorScheme === "dark"
+                ? "#222"
+                : "#E8E8E8",
             },
           ]}
         >
           <Text
             style={[
               styles.messageText,
-              { color: isMyMessage ? '#ffffff' : (colorScheme === 'dark' ? '#fff' : '#000') },
+              {
+                color: isMyMessage
+                  ? "#ffffff"
+                  : colorScheme === "dark"
+                  ? "#fff"
+                  : "#000",
+              },
             ]}
           >
             {item.message}
@@ -176,8 +196,10 @@ export default function ChatScreen() {
               styles.messageTime,
               {
                 color: isMyMessage
-                  ? 'rgba(255,255,255,0.7)'
-                  : (colorScheme === 'dark' ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)'),
+                  ? "rgba(255,255,255,0.7)"
+                  : colorScheme === "dark"
+                  ? "rgba(255,255,255,0.6)"
+                  : "rgba(0,0,0,0.5)",
               },
             ]}
           >
@@ -191,8 +213,6 @@ export default function ChatScreen() {
     );
   };
 
-  
-
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background }]}
@@ -203,8 +223,8 @@ export default function ChatScreen() {
         style={[
           styles.header,
           {
-            backgroundColor: '#6b1fa8',
-            borderBottomColor: '#6b1fa8',
+            backgroundColor: "#6b1fa8",
+            borderBottomColor: "#6b1fa8",
           },
         ]}
       >
@@ -215,35 +235,41 @@ export default function ChatScreen() {
           <Ionicons name="arrow-back" size={24} color="#ffffff" />
         </TouchableOpacity>
         <View style={styles.headerInfo}>
-          <Text style={[styles.headerName, { color: '#ffffff' }]}>
-            {name}
-          </Text>
-          
+          <Text style={[styles.headerName, { color: "#ffffff" }]}>{name}</Text>
+
           {/* Word Count for Users */}
           {wordCountStatus && (
-            <Text style={[styles.wordCount, { 
-              color: wordCountStatus.wordsRemaining < 1000 ? '#ff4444' : '#ffffff' 
-            }]}>
+            <Text
+              style={[
+                styles.wordCount,
+                {
+                  color:
+                    wordCountStatus.wordsRemaining < 1000
+                      ? "#ff4444"
+                      : "#ffffff",
+                },
+              ]}
+            >
               Words: {wordCountStatus.wordsRemaining.toLocaleString()} left
             </Text>
           )}
-          
+
           {/* Waiting for other user indicator */}
           {waitingForOtherUser && (
-            <Text style={[styles.waitingIndicator, { color: '#ffeb3b' }]}>
+            <Text style={[styles.waitingIndicator, { color: "#ffeb3b" }]}>
               ⏳ Waiting for {name}...
             </Text>
           )}
-          
+
           {/* Session Timer - only show when session has started */}
           {sessionStartTime && !waitingForOtherUser && (
-            <Text style={[styles.sessionTimer, { color: '#ffffff' }]}>
+            <Text style={[styles.sessionTimer, { color: "#ffffff" }]}>
               ⏱️ {formatTime(elapsedTime)}
             </Text>
           )}
-          
+
           {isTyping && (
-            <Text style={[styles.typingIndicator, { color: '#ffffff' }]}>
+            <Text style={[styles.typingIndicator, { color: "#ffffff" }]}>
               typing...
             </Text>
           )}
@@ -294,15 +320,26 @@ export default function ChatScreen() {
         keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
       >
         {/* Word Limit Exhausted Banner */}
-        {(otherUserWordLimitExhausted || (wordCountStatus && wordCountStatus.wordsRemaining <= 0)) && (
+        {(otherUserWordLimitExhausted ||
+          (wordCountStatus && wordCountStatus.wordsRemaining <= 0)) && (
           <View style={styles.limitBanner}>
-            <Ionicons name="alert-circle" size={18} color="#6b1fa8" style={styles.limitBannerIcon} />
-            <Text style={[styles.limitBannerText, { color: colorScheme === 'dark' ? '#fff' : '#333' }]} numberOfLines={1}>
-              {wordCountStatus && wordCountStatus.wordsRemaining <= 0 
+            <Ionicons
+              name="alert-circle"
+              size={18}
+              color="#6b1fa8"
+              style={styles.limitBannerIcon}
+            />
+            <Text
+              style={[
+                styles.limitBannerText,
+                { color: colorScheme === "dark" ? "#fff" : "#333" },
+              ]}
+              numberOfLines={1}
+            >
+              {wordCountStatus && wordCountStatus.wordsRemaining <= 0
                 ? "You have no messages left this month"
                 : `${name} has no messages left this month`}
             </Text>
-            
           </View>
         )}
 
@@ -315,46 +352,78 @@ export default function ChatScreen() {
           <TextInput
             style={[
               styles.input,
-              { 
-                backgroundColor: (otherUserWordLimitExhausted || (wordCountStatus && wordCountStatus.wordsRemaining <= 0) || waitingForOtherUser)
-                  ? (colorScheme === 'dark' ? '#1a1a1a' : '#d0d0d0')
-                  : (colorScheme === 'dark' ? '#222' : '#E8E8E8'),
-                color: (otherUserWordLimitExhausted || (wordCountStatus && wordCountStatus.wordsRemaining <= 0) || waitingForOtherUser)
-                  ? (colorScheme === 'dark' ? '#666' : '#999')
-                  : colors.text,
+              {
+                backgroundColor:
+                  otherUserWordLimitExhausted ||
+                  (wordCountStatus && wordCountStatus.wordsRemaining <= 0) ||
+                  waitingForOtherUser
+                    ? colorScheme === "dark"
+                      ? "#1a1a1a"
+                      : "#d0d0d0"
+                    : colorScheme === "dark"
+                    ? "#222"
+                    : "#E8E8E8",
+                color:
+                  otherUserWordLimitExhausted ||
+                  (wordCountStatus && wordCountStatus.wordsRemaining <= 0) ||
+                  waitingForOtherUser
+                    ? colorScheme === "dark"
+                      ? "#666"
+                      : "#999"
+                    : colors.text,
               },
             ]}
             placeholder={
-              isPending 
-                ? "Chat is pending..." 
+              isPending
+                ? "Chat is pending..."
                 : waitingForOtherUser
-                  ? `Waiting for ${name} to join...`
-                : (otherUserWordLimitExhausted || (wordCountStatus && wordCountStatus.wordsRemaining <= 0))
-                  ? "Messages disabled - word limit reached"
-                  : "Type a message..."
+                ? `Waiting for ${name} to join...`
+                : otherUserWordLimitExhausted ||
+                  (wordCountStatus && wordCountStatus.wordsRemaining <= 0)
+                ? "Messages disabled - word limit reached"
+                : "Type a message..."
             }
             placeholderTextColor={
-              (otherUserWordLimitExhausted || (wordCountStatus && wordCountStatus.wordsRemaining <= 0) || waitingForOtherUser)
-                ? (colorScheme === 'dark' ? '#555' : '#aaa')
+              otherUserWordLimitExhausted ||
+              (wordCountStatus && wordCountStatus.wordsRemaining <= 0) ||
+              waitingForOtherUser
+                ? colorScheme === "dark"
+                  ? "#555"
+                  : "#aaa"
                 : colors.icon
             }
             value={inputMessage}
             onChangeText={handleTyping}
             multiline
             maxLength={500}
-            editable={!isPending && !otherUserWordLimitExhausted && !(wordCountStatus && wordCountStatus.wordsRemaining <= 0) && !waitingForOtherUser}
+            editable={
+              !isPending &&
+              !otherUserWordLimitExhausted &&
+              !(wordCountStatus && wordCountStatus.wordsRemaining <= 0) &&
+              !waitingForOtherUser
+            }
           />
           <TouchableOpacity
             style={[
               styles.sendButton,
-              { 
-                backgroundColor: (isPending || otherUserWordLimitExhausted || (wordCountStatus && wordCountStatus.wordsRemaining <= 0) || waitingForOtherUser)
-                  ? "#ccc" 
-                  : '#6b1fa8' 
+              {
+                backgroundColor:
+                  isPending ||
+                  otherUserWordLimitExhausted ||
+                  (wordCountStatus && wordCountStatus.wordsRemaining <= 0) ||
+                  waitingForOtherUser
+                    ? "#ccc"
+                    : "#6b1fa8",
               },
             ]}
             onPress={handleSend}
-            disabled={isPending || !inputMessage.trim() || otherUserWordLimitExhausted || (wordCountStatus?.wordsRemaining ?? 1) <= 0 || waitingForOtherUser}
+            disabled={
+              isPending ||
+              !inputMessage.trim() ||
+              otherUserWordLimitExhausted ||
+              (wordCountStatus?.wordsRemaining ?? 1) <= 0 ||
+              waitingForOtherUser
+            }
           >
             <Ionicons name="send" size={20} color="#ffffff" />
           </TouchableOpacity>

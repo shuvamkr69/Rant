@@ -289,7 +289,7 @@ export default function MyProfile() {
       >
         <View style={styles.myProfilePage}>
           <LinearGradient
-            colors={[TOPBAR_COLOR, "#7f2bb8"]}
+            colors={[TOPBAR_COLOR, "#2bb8b6ff"]}
             style={[styles.imageContainer]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
@@ -426,9 +426,9 @@ const styles = StyleSheet.create({
     opacity: 0.95,
   },
   profileImage: {
-    width: 150,
-    height: 150,
-    borderRadius: 75,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
     borderWidth: 4,
     borderColor: "#fff",
     backgroundColor: "#c4c4c4",
