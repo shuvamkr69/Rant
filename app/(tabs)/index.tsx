@@ -1,5 +1,6 @@
 import { useTheme } from "@/components/contexts/ThemeContext";
 import TopBar from "@/components/resuables/TopBar";
+import { HomeScreenSkeleton } from "@/components/skeletons";
 import { api } from "@/components/utils/api";
 import { Colors } from "@/constants/theme";
 import { Ionicons } from "@expo/vector-icons";
@@ -30,6 +31,7 @@ export default function HomeScreen() {
   const [showMessageModal, setShowMessageModal] = useState(false);
   const [preMatchMessage, setPreMatchMessage] = useState("");
   const [selectedProfile, setSelectedProfile] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
   const fetchCurrentUser = async () => {
@@ -52,11 +54,14 @@ export default function HomeScreen() {
       }
     } catch (error) {
       console.error("❌ Error fetching profiles:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   useFocusEffect(
     useCallback(() => {
+      setIsLoading(true);
       fetchCurrentUser();
       fetchProfiles();
     }, [])
@@ -118,10 +123,14 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <TopBar />
-      <View style={styles.HomeScreen}>
-        {profiles.length > 0 ? (
+    <>
+      {isLoading ? (
+        <HomeScreenSkeleton />
+      ) : (
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+          <TopBar />
+          <View style={styles.HomeScreen}>
+            {profiles.length > 0 ? (
           <Swiper
             cards={profiles}
             renderCard={(card) => {
@@ -256,7 +265,9 @@ export default function HomeScreen() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+        </SafeAreaView>
+      )}
+    </>
   );
 }
 

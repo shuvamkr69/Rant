@@ -1,9 +1,10 @@
 import { useTheme } from "@/components/contexts/ThemeContext";
 import TopBar from "@/components/resuables/TopBar";
+import { MyWalletSkeleton } from "@/components/skeletons";
 import { api } from "@/components/utils/api";
 import { Colors } from "@/constants/theme";
 import { useFocusEffect } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Animated, Dimensions, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -11,6 +12,7 @@ const MyWallet = () => {
   const [walletBalance, setWalletBalance] = useState<any>(null);
   const { colorScheme } = useTheme();
   const colors = Colors[colorScheme];
+  const [isLoading, setIsLoading] = useState(true);
 
   const mockBuyData = [
     { cardNumber: 1, info: 'Buy $10 Credits', amount: 10 },
@@ -35,12 +37,17 @@ const MyWallet = () => {
       }
     } catch (error) {
       setWalletBalance(0); // fallback if error
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  useFocusEffect(() => {
-    fetchBalance();
-  });
+  useFocusEffect(
+    useCallback(() => {
+      setIsLoading(true);
+      fetchBalance();
+    }, [])
+  );
 
   const glassBg: [string, string] = colorScheme === 'dark'
     ? ['rgba(20,20,20,0.7)', 'rgba(40,40,40,0.4)']
@@ -71,56 +78,60 @@ const MyWallet = () => {
   });
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <TopBar />
-      <View style={styles.centeredContainer}>
-        <Animated.View style={{ transform: [{ translateY }], alignItems: 'center', justifyContent: 'center', width: '100%', position: 'absolute', top: screenHeight * 0.06, left: 0, right: 0, zIndex: 2 }}>
-          <View style={[styles.cardContainer, { width: Math.min(screenWidth * 1.18, 800), height: Math.min(screenHeight * 0.54, 520) }]}> 
-            <Image
-              source={require('../../assets/images/goldenCreditCard.png')}
-              style={styles.cardImage}
-              resizeMode="contain"
-            />
-            <View style={styles.balanceOnCard} pointerEvents="none">
-              <Text style={[styles.balanceCardText, { color: '#d1a73cff' }]}> 
-                {walletBalance !== null ? `${walletBalance}` : '0'}
-              </Text>
-            </View>
-          </View>
-        </Animated.View>
-        <View style={[styles.buySection, { position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 1, marginBottom: 18 }]}> 
-          <ScrollView
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onScroll={onScroll}
-            scrollEventThrottle={16}
-            contentContainerStyle={{ alignItems: 'flex-end' }}
-            snapToAlignment="center"
-            style={styles.cardSwiper}
-          >
-            {mockBuyData.map((item, idx) => (
-              <View key={item.cardNumber} style={[styles.optionCard, { width: Math.min(screenWidth * 0.82, 340) }]}> 
-                <Text style={styles.optionCardTitle}>{item.info}</Text>
-                <Text style={styles.optionCardAmount}>${item.amount}</Text>
+    <>
+      {isLoading ? (
+        <MyWalletSkeleton />
+      ) : (
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+          <TopBar />
+          <View style={styles.centeredContainer}>
+            <Animated.View style={{ transform: [{ translateY }], alignItems: 'center', justifyContent: 'center', width: '100%', position: 'absolute', top: screenHeight * 0.06, left: 0, right: 0, zIndex: 2 }}>
+              <View style={[styles.cardContainer, { width: Math.min(screenWidth * 1.18, 800), height: Math.min(screenHeight * 0.54, 520) }]}> 
+                <Image
+                  source={require('../../assets/images/goldenCreditCard.png')}
+                  style={styles.cardImage}
+                  resizeMode="contain"
+                />
+                <View style={styles.balanceOnCard} pointerEvents="none">
+                  <Text style={[styles.balanceCardText, { color: '#d1a73cff' }]}> 
+                    {walletBalance !== null ? `${walletBalance}` : '0'}
+                  </Text>
+                </View>
               </View>
-            ))}
-          </ScrollView>
+            </Animated.View>
+            <View style={[styles.buySection, { position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 1, marginBottom: 18 }]}> 
+              <ScrollView
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onScroll={onScroll}
+                scrollEventThrottle={16}
+                contentContainerStyle={{ alignItems: 'flex-end' }}
+                snapToAlignment="center"
+                style={styles.cardSwiper}
+              >
+                {mockBuyData.map((item, idx) => (
+                  <View key={item.cardNumber} style={[styles.optionCard, { width: Math.min(screenWidth * 0.82, 340) }]}> 
+                    <Text style={styles.optionCardTitle}>{item.info}</Text>
+                    <Text style={styles.optionCardAmount}>${item.amount}</Text>
+                  </View>
+                ))}
+              </ScrollView>
           <View style={styles.paginationContainer}>
             {mockBuyData.map((_, idx) => (
               <View
                 key={idx}
                 style={[styles.paginationDot, activeIndex === idx && styles.paginationDotActive]}
               />
-            ))}
+              ))}
+            </View>
           </View>
         </View>
-      </View>
-    </SafeAreaView>
+        </SafeAreaView>
+      )}
+    </>
   );
-};
-
-const styles = StyleSheet.create({
+};const styles = StyleSheet.create({
   centeredContainer: {
     flex: 1,
     justifyContent: 'center',

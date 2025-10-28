@@ -1,9 +1,10 @@
 import { useChat } from "@/components/contexts/chatContext";
 import { useTheme } from "@/components/contexts/ThemeContext";
 import TopBar from "@/components/resuables/TopBar";
+import { ChatsScreenSkeleton } from "@/components/skeletons";
 import { Colors } from "@/constants/theme";
 import { useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated,
   Easing,
@@ -23,6 +24,7 @@ const Chats = () => {
   const router = useRouter();
   const animatedPlayed = useRef(false);
   const isFocusedRef = useRef(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Map of animated values per match id
   const animatedMapRef = useRef(new Map());
@@ -32,7 +34,8 @@ const Chats = () => {
   useFocusEffect(
     useCallback(() => {
       isFocusedRef.current = true;
-      loadMatches();
+      setIsLoading(true);
+      loadMatches().finally(() => setIsLoading(false));
       return () => {
         isFocusedRef.current = false;
       };
@@ -89,15 +92,19 @@ const Chats = () => {
   }, [matches]);
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: colors.background }]}
-    >
-      <TopBar />
-      <View style={styles.chatsContainer}>
-        <View style={styles.cardsContainer}>
-          <Text style={[styles.headingText, { color: colors.text }]}>
-            Chats
-          </Text>
+    <>
+      {isLoading ? (
+        <ChatsScreenSkeleton />
+      ) : (
+        <SafeAreaView
+          style={[styles.container, { backgroundColor: colors.background }]}
+        >
+          <TopBar />
+          <View style={styles.chatsContainer}>
+            <View style={styles.cardsContainer}>
+              <Text style={[styles.headingText, { color: colors.text }]}>
+                Chats
+              </Text>
 
           {matches.length === 0 ? (
             <View style={styles.emptyContainer}>
@@ -175,7 +182,9 @@ const Chats = () => {
           )}
         </View>
       </View>
-    </SafeAreaView>
+        </SafeAreaView>
+      )}
+    </>
   );
 };
 

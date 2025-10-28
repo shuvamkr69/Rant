@@ -1,10 +1,11 @@
 import { useTheme } from "@/components/contexts/ThemeContext";
 import TopBar from "@/components/resuables/TopBar";
+import { MyProfileSkeleton } from "@/components/skeletons";
 import { api } from "@/components/utils/api";
 import { Colors } from "@/constants/theme";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated,
   Easing,
@@ -129,6 +130,7 @@ export default function MyProfile() {
   const [userType, setUserType] = useState<string>("");
   const [refreshing, setRefreshing] = useState(false);
   const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   // animation refs
   const profileScale = useRef(new Animated.Value(0.96)).current;
@@ -152,6 +154,8 @@ export default function MyProfile() {
       }
     } catch (error) {
       console.log("Error fetching my profile or stats:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -161,9 +165,12 @@ export default function MyProfile() {
     setRefreshing(false);
   };
 
-  useFocusEffect(() => {
-    fetchMyProfile();
-  });
+  useFocusEffect(
+    useCallback(() => {
+      setIsLoading(true);
+      fetchMyProfile();
+    }, [])
+  );
 
   // initialize stat animated values when stats change
   useEffect(() => {
@@ -272,25 +279,29 @@ export default function MyProfile() {
   }
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: colors.background }]}
-    >
-      <TopBar />
-      <ScrollView
-        contentContainerStyle={{ paddingBottom: 40 }}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.tint}
-            colors={[colors.tint]}
-          />
-        }
-      >
-        <View style={styles.myProfilePage}>
-          <LinearGradient
-            colors={[TOPBAR_COLOR, "#7f2bb8"]}
-            style={[styles.imageContainer]}
+    <>
+      {isLoading ? (
+        <MyProfileSkeleton />
+      ) : (
+        <SafeAreaView
+          style={[styles.container, { backgroundColor: colors.background }]}
+        >
+          <TopBar />
+          <ScrollView
+            contentContainerStyle={{ paddingBottom: 40 }}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={colors.tint}
+                colors={[colors.tint]}
+              />
+            }
+          >
+            <View style={styles.myProfilePage}>
+              <LinearGradient
+                colors={[TOPBAR_COLOR, "#7f2bb8"]}
+                style={[styles.imageContainer]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           >
@@ -389,7 +400,9 @@ export default function MyProfile() {
           )}
         </View>
       </ScrollView>
-    </SafeAreaView>
+        </SafeAreaView>
+      )}
+    </>
   );
 }
 
