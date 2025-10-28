@@ -3,7 +3,7 @@ import React, { useEffect } from "react";
 import { BackHandler, Platform } from "react-native";
 
 import { useTheme } from "@/components/contexts/ThemeContext";
-import { HapticTab } from "@/components/haptic-tab";
+import { HapticTab } from "@/components/resuables/haptic-tab";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 
 export default function TabLayout() {
