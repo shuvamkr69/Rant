@@ -177,6 +177,13 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
         }
       });
 
+      // Session ended by other user
+      newSocket.on("session_ended_by_other", (data: { message: string; endedBy: string }) => {
+        console.log("🛑 Session ended by other user:", data);
+        setSessionStartTime(null);
+        setWaitingForOtherUser(true); // Show "waiting for other user" if they try to stay
+      });
+
       newSocket.on("error", (error: any) => {
         console.error("❌ Socket error:", error);
       });

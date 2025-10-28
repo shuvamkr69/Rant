@@ -301,6 +301,44 @@ export const initializeSocket = (server) => {
       }
     });
 
+    // Handle explicit session end (when user clicks "End Session" button)
+    socket.on("end_session", async (data) => {
+      try {
+        const { otherUserId } = data;
+        const currentUserId = userId;
+        const roomId = [currentUserId.toString(), otherUserId].sort().join("_");
+
+        console.log(`🛑 User ${currentUserId} explicitly ending session in room ${roomId}`);
+        
+        // Check if there's an active session for this room
+        const sessionData = activeSessions.get(roomId);
+        
+        if (sessionData && sessionData.bothUsersPresent) {
+          console.log(`📊 Ending session ${sessionData.sessionId} for room ${roomId}`);
+          
+          // End the session immediately
+          await endSession(roomId, sessionData, "completed");
+          
+          // Notify the other user that the session has ended
+          const otherUserSocketId = userSockets.get(otherUserId.toString());
+          if (otherUserSocketId) {
+            io.to(otherUserSocketId).emit("session_ended_by_other", {
+              message: "The other user has ended the session.",
+              endedBy: currentUserId.toString(),
+            });
+            console.log(`📢 Notified user ${otherUserId} that session was ended by ${currentUserId}`);
+          }
+          
+          // Also leave the room
+          socket.leave(roomId);
+        } else {
+          console.log(`⚠️ No active session found for room ${roomId}`);
+        }
+      } catch (error) {
+        console.error("❌ Error ending session:", error);
+      }
+    });
+
     // Handle sending messages
     socket.on("send_message", async (data) => {
       try {
@@ -603,9 +641,15 @@ const endSession = async (roomId, sessionData, status = "completed") => {
       (uid) => uid.toString() === userId.toString()
     );
 
+    // Minimum duration required for session to count (30 minutes = 1800 seconds)
+    const MIN_SESSION_DURATION = 1800;
+    const sessionCountsTowardsStats = activeDurationInSeconds >= MIN_SESSION_DURATION;
+
     const updateData = {
       $inc: {
-        sessionsConducted: 1,
+        // Only increment sessionsConducted if duration >= 30 minutes
+        sessionsConducted: sessionCountsTowardsStats ? 1 : 0,
+        // Always add to totalChatTime regardless of duration
         totalChatTime: activeDurationInSeconds,
       },
     };
@@ -621,6 +665,7 @@ const endSession = async (roomId, sessionData, status = "completed") => {
     );
 
     console.log(`📊 Listener stats updated: sessionsConducted=${updatedListenerStats.sessionsConducted}, totalChatTime=${updatedListenerStats.totalChatTime}s`);
+    console.log(`   ℹ️ Session duration: ${activeDurationInSeconds}s (${sessionCountsTowardsStats ? 'COUNTS' : 'DOES NOT COUNT'} towards sessionsConducted - minimum ${MIN_SESSION_DURATION}s required)`);
 
     // Update user stats
     let userStats = await UserStats.findOne({ userId });
@@ -633,7 +678,9 @@ const endSession = async (roomId, sessionData, status = "completed") => {
       userStats._id,
       {
         $inc: {
-          sessionsCompleted: 1,
+          // Only increment sessionsCompleted if duration >= 30 minutes
+          sessionsCompleted: sessionCountsTowardsStats ? 1 : 0,
+          // Always add to totalSessionTime regardless of duration
           totalSessionTime: activeDurationInSeconds,
         },
       },

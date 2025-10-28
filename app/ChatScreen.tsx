@@ -1,14 +1,19 @@
 import { useChat } from "@/components/contexts/chatContext";
 import { useTheme } from "@/components/contexts/ThemeContext";
+import { useCustomAlert } from "@/components/resuables/CustomAlert";
 import { api } from "@/components/utils/api";
 import { Colors } from "@/constants/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
+  AppState,
+  BackHandler,
   FlatList,
   KeyboardAvoidingView,
   Platform,
+  RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -36,6 +41,7 @@ export default function ChatScreen() {
   const { colorScheme } = useTheme();
   const colors = Colors;
   const router = useRouter();
+  const { showAlert, AlertComponent } = useCustomAlert();
   const [inputMessage, setInputMessage] = useState("");
   const flatListRef = useRef<FlatList>(null);
   const typingTimeoutRef = useRef<any>(null);
@@ -43,6 +49,11 @@ export default function ChatScreen() {
   const [elapsedTime, setElapsedTime] = useState(0);
   const [otherUserWordLimitExhausted, setOtherUserWordLimitExhausted] =
     useState(false);
+  const [isExiting, setIsExiting] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Check if session is active (both users present and session has started)
+  const isSessionActive = sessionStartTime && !waitingForOtherUser && !isPending;
 
   const fetchMyInfo = async () => {
     try {
@@ -54,6 +65,41 @@ export default function ChatScreen() {
     } catch (error) {
       setMyProfileData({ walletBalance: 0 });
     }
+  };
+
+  // Handle exit confirmation
+  const handleExitSession = () => {
+    if (isSessionActive && !isExiting) {
+      const message = elapsedTime < 1800 
+        ? `Your active session will end.\n\nNote: Sessions must be 30 minutes or longer to count towards your stats. This session has been running for ${formatTime(elapsedTime)}.`
+        : "Your active session will end.";
+
+      showAlert(
+        "End Session?",
+        message,
+        [
+          {
+            text: "Cancel",
+            style: "cancel",
+          },
+          {
+            text: "End Session",
+            style: "destructive",
+            onPress: () => {
+              setIsExiting(true);
+              if (socket && userId) {
+                // Emit end_session instead of leave_room for explicit session ending
+                socket.emit("end_session", { otherUserId: userId });
+              }
+              router.back();
+            },
+          },
+        ],
+        { icon: "exit-outline", iconColor: "#ff5252", cancelable: true }
+      );
+      return true; // Prevent default back action
+    }
+    return false; // Allow default back action
   };
 
   // Timer to track elapsed time
@@ -83,6 +129,27 @@ export default function ChatScreen() {
     }
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
+
+  // Handle refresh when waiting for other user
+  const handleRefresh = async () => {
+    if (!waitingForOtherUser || !userId || !socket) return;
+    
+    setRefreshing(true);
+    
+    try {
+      // Re-emit join_room to check if the other user has returned
+      console.log(`🔄 Refreshing - re-joining room with user ${userId}`);
+      socket.emit("join_room", { otherUserId: userId });
+      
+      // Wait a bit for the response
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    } catch (error) {
+      console.error("❌ Error refreshing:", error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   useEffect(() => {
     if (userId && socket) {
       loadChatHistory(userId as string);
@@ -105,6 +172,24 @@ export default function ChatScreen() {
         handleOtherUserLimitExhausted
       );
 
+      // Listen for session ended by other user
+      const handleSessionEndedByOther = (data: any) => {
+        console.log("🛑 Session ended by other user:", data);
+        // Don't navigate back, let them see the "waiting for other user" message
+        // The chatContext will set waitingForOtherUser to true
+        showAlert(
+          "Session Ended",
+          `${name} has ended the session. You can leave the chat or wait for them to return.`,
+          [
+            { text: "Stay", style: "cancel" },
+            { text: "Leave Chat", style: "default", onPress: () => router.back() }
+          ],
+          { icon: "information-circle", iconColor: "#6b1fa8" }
+        );
+      };
+
+      socket.on("session_ended_by_other", handleSessionEndedByOther);
+
       // Cleanup function - leave room when component unmounts
       return () => {
         socket.emit("leave_room", { otherUserId: userId });
@@ -112,6 +197,7 @@ export default function ChatScreen() {
           "other_user_word_limit_exhausted",
           handleOtherUserLimitExhausted
         );
+        socket.off("session_ended_by_other", handleSessionEndedByOther);
       };
     }
   }, [userId, socket]);
@@ -119,6 +205,40 @@ export default function ChatScreen() {
   useEffect(() => {
     fetchMyInfo();
   }, []);
+
+  // Handle hardware back button (Android)
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      () => {
+        return handleExitSession();
+      }
+    );
+
+    return () => backHandler.remove();
+  }, [isSessionActive, elapsedTime, isExiting]);
+
+  // Handle app state changes (minimize/background)
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextAppState) => {
+      if (nextAppState === "background" || nextAppState === "inactive") {
+        if (isSessionActive && !isExiting) {
+          // Show warning when app is backgrounded
+          showAlert(
+            "Session Active",
+            "You have an active session. Minimizing the app may end your session.",
+            [{ text: "OK", style: "default" }],
+            { icon: "warning", iconColor: "#ff9800" }
+          );
+        }
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [isSessionActive, isExiting]);
+
   useEffect(() => {
     // Scroll to bottom when new messages arrive
     if (messages.length > 0) {
@@ -223,7 +343,11 @@ export default function ChatScreen() {
         ]}
       >
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => {
+            if (!handleExitSession()) {
+              router.back();
+            }
+          }}
           style={styles.backButton}
         >
           <Ionicons name="arrow-back" size={24} color="#ffffff" />
@@ -251,15 +375,22 @@ export default function ChatScreen() {
           {/* Waiting for other user indicator */}
           {waitingForOtherUser && (
             <Text style={[styles.waitingIndicator, { color: "#ffeb3b" }]}>
-              ⏳ Waiting for {name}...
+              Waiting
             </Text>
           )}
 
           {/* Session Timer - only show when session has started */}
           {sessionStartTime && !waitingForOtherUser && (
-            <Text style={[styles.sessionTimer, { color: "#ffffff" }]}>
-              ⏱️ {formatTime(elapsedTime)}
-            </Text>
+            <View style={styles.timerContainer}>
+              <Text style={[styles.sessionTimer, { color: "#ffffff" }]}>
+                ⏱️ {formatTime(elapsedTime)}
+              </Text>
+              {elapsedTime < 1800 && myProfileData?.userType === "Listener" && (
+                <Text style={[styles.sessionWarning, { color: "#ffeb3b" }]}>
+                  {Math.ceil((1800 - elapsedTime) / 60)} min to count
+                </Text>
+              )}
+            </View>
           )}
 
           {isTyping && (
@@ -282,7 +413,19 @@ export default function ChatScreen() {
           </Text>
         </View>
       ) : waitingForOtherUser ? (
-        <View style={styles.pendingContainer}>
+        <ScrollView
+          contentContainerStyle={styles.pendingContainer}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor="#6b1fa8"
+              colors={["#6b1fa8"]}
+              title="Pull to refresh"
+              titleColor="#6b1fa8"
+            />
+          }
+        >
           <Ionicons name="hourglass-outline" size={64} color="#6b1fa8" />
           <Text style={[styles.pendingTitle, { color: colors.text }]}>
             Waiting for {name} to join
@@ -290,7 +433,10 @@ export default function ChatScreen() {
           <Text style={[styles.pendingMessage, { color: colors.icon }]}>
             The session will start once both of you are in the chat.
           </Text>
-        </View>
+          <Text style={[styles.pullToRefreshHint, { color: colors.icon }]}>
+            Pull down to refresh
+          </Text>
+        </ScrollView>
       ) : (
         <FlatList
           ref={flatListRef}
@@ -313,6 +459,25 @@ export default function ChatScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
       >
+        {/* 30-minute session requirement info banner - only show for first 30 minutes and for listeners */}
+        {sessionStartTime && 
+         !waitingForOtherUser && 
+         elapsedTime < 1800 && 
+         elapsedTime > 0 && 
+         myProfileData?.userType === "Listener" && (
+          <View style={styles.infoBanner}>
+            <Ionicons
+              name="information-circle"
+              size={16}
+              color="#2196F3"
+              style={styles.infoBannerIcon}
+            />
+            <Text style={styles.infoBannerText}>
+              Session counts after 30 minutes ({Math.ceil((1800 - elapsedTime) / 60)} min left)
+            </Text>
+          </View>
+        )}
+
         {/* Word Limit Exhausted Banner */}
         {(otherUserWordLimitExhausted ||
           (wordCountStatus && wordCountStatus.wordsRemaining <= 0)) && (
@@ -340,7 +505,7 @@ export default function ChatScreen() {
         <View
           style={[
             styles.inputContainer,
-            { backgroundColor: colors.background, borderTopColor: colors.icon },
+            { backgroundColor: "#160426ff", borderTopColor: "#6b1fa8" },
           ]}
         >
           <TextInput
@@ -415,6 +580,9 @@ export default function ChatScreen() {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      {/* Custom Alert Component */}
+      <AlertComponent />
     </SafeAreaView>
   );
 }
@@ -442,20 +610,29 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   wordCount: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: "500",
     marginLeft: 10,
+    marginTop: 2,
   },
   sessionTimer: {
     fontSize: 14,
     fontWeight: "600",
     marginLeft: 10,
   },
+  timerContainer: {
+    marginLeft: 10,
+    alignItems: 'flex-end',
+  },
+  sessionWarning: {
+    fontSize: 10,
+    fontWeight: "500",
+    fontStyle: "italic",
+    marginTop: 2,
+  },
   waitingIndicator: {
     fontSize: 13,
     fontWeight: "500",
-    marginLeft: 10,
-    fontStyle: "italic",
   },
   walletBalance: {
     fontSize: 16,
@@ -520,11 +697,19 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 24,
   },
+  pullToRefreshHint: {
+    fontSize: 14,
+    textAlign: "center",
+    marginTop: 16,
+    fontStyle: "italic",
+    opacity: 0.7,
+  },
   inputContainer: {
     flexDirection: "row",
     alignItems: "flex-end",
     padding: 10,
     borderTopWidth: 1,
+    borderColor: "#6b1fa8",
   },
   input: {
     flex: 1,
@@ -567,5 +752,26 @@ const styles = StyleSheet.create({
   limitBannerClose: {
     padding: 4,
     marginLeft: 8,
+  },
+  infoBanner: {
+    backgroundColor: "rgba(33, 150, 243, 0.1)",
+    flexDirection: "row",
+    alignItems: "center",
+    borderColor: "#2196F3",
+    borderWidth: 1,
+    paddingHorizontal: 15,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginHorizontal: 10,
+    marginBottom: 5,
+  },
+  infoBannerIcon: {
+    marginRight: 8,
+  },
+  infoBannerText: {
+    flex: 1,
+    color: "#2196F3",
+    fontSize: 12,
+    fontWeight: "500",
   },
 });
