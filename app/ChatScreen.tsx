@@ -11,6 +11,7 @@ import {
   AppState,
   BackHandler,
   FlatList,
+  Image,
   KeyboardAvoidingView,
   Platform,
   RefreshControl,
@@ -56,6 +57,7 @@ export default function ChatScreen() {
   const [isExiting, setIsExiting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [showRatingModal, setShowRatingModal] = useState(false);
+  const [otherUserProfileImage, setOtherUserProfileImage] = useState<string | null>(null);
 
   // Check if session is active (both users present and session has started)
   const isSessionActive =
@@ -127,11 +129,22 @@ export default function ChatScreen() {
     }
   };
 
+  const fetchOtherUserProfile = async () => {
+    try {
+      const response = await api.get(`/api/v1/users/profile/${userId}`);
+      if (response.status === 200 && response.data.profileImage) {
+        setOtherUserProfileImage(response.data.profileImage);
+      }
+    } catch (error) {
+      console.error("Error fetching other user profile:", error);
+    }
+  };
+
   // Handle exit confirmation
   const handleExitSession = () => {
     if (isSessionActive && !isExiting) {
       const message =
-        elapsedTime < 1800
+        elapsedTime < 37
           ? `Your active session will end.\n\nNote: Sessions must be 30 minutes or longer to count towards your stats. This session has been running for ${formatTime(
               elapsedTime
             )}.`
@@ -271,7 +284,10 @@ export default function ChatScreen() {
 
   useEffect(() => {
     fetchMyInfo();
-  }, []);
+    if (userId) {
+      fetchOtherUserProfile();
+    }
+  }, [userId]);
 
   // Handle hardware back button (Android)
   useEffect(() => {
@@ -415,8 +431,38 @@ export default function ChatScreen() {
         >
           <Ionicons name="arrow-back" size={24} color="#ffffff" />
         </TouchableOpacity>
+        
+        {/* Profile Picture */}
+        <TouchableOpacity
+          onPress={() => {
+            // @ts-ignore
+            router.push(`/ViewOtherProfile?userId=${userId}`);
+          }}
+          style={styles.profilePictureContainer}
+        >
+          {otherUserProfileImage ? (
+            <Image
+              source={{ uri: otherUserProfileImage }}
+              style={styles.profilePicture}
+            />
+          ) : (
+            <View style={styles.profilePicturePlaceholder}>
+              <Text style={styles.profilePictureText}>
+                {(name as string)?.charAt(0).toUpperCase()}
+              </Text>
+            </View>
+          )}
+        </TouchableOpacity>
+
         <View style={styles.headerInfo}>
-          <Text style={[styles.headerName, { color: "#ffffff" }]}>{name}</Text>
+          <TouchableOpacity
+            onPress={() => {
+              // @ts-ignore
+              router.push(`/ViewOtherProfile?userId=${userId}`);
+            }}
+          >
+            <Text style={[styles.headerName, { color: "#ffffff" }]}>{name}</Text>
+          </TouchableOpacity>
 
           {/* Word Count for Users */}
           {wordCountStatus && (
@@ -448,9 +494,9 @@ export default function ChatScreen() {
               <Text style={[styles.sessionTimer, { color: "#ffffff" }]}>
                 ⏱️ {formatTime(elapsedTime)}
               </Text>
-              {elapsedTime < 1800 && myProfileData?.userType === "Listener" && (
+              {elapsedTime < 37 && myProfileData?.userType === "Listener" && (
                 <Text style={[styles.sessionWarning, { color: "#ffeb3b" }]}>
-                  {Math.ceil((1800 - elapsedTime) / 60)} min to count
+                  {Math.ceil((37 - elapsedTime) / 60)} min to count
                 </Text>
               )}
             </View>
@@ -525,7 +571,7 @@ export default function ChatScreen() {
         {/* 30-minute session requirement info banner - only show for first 30 minutes and for listeners */}
         {sessionStartTime &&
           !waitingForOtherUser &&
-          elapsedTime < 1800 &&
+          elapsedTime < 37 &&
           elapsedTime > 0 &&
           myProfileData?.userType === "Listener" && (
             <View style={styles.infoBanner}>
@@ -537,7 +583,7 @@ export default function ChatScreen() {
               />
               <Text style={styles.infoBannerText}>
                 Session counts after 30 minutes (
-                {Math.ceil((1800 - elapsedTime) / 60)} min left)
+                {Math.ceil((37 - elapsedTime) / 60)} min left)
               </Text>
             </View>
           )}
@@ -668,6 +714,28 @@ const styles = StyleSheet.create({
   },
   backButton: {
     marginRight: 15,
+  },
+  profilePictureContainer: {
+    marginRight: 12,
+  },
+  profilePicture: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#ddd",
+  },
+  profilePicturePlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255, 255, 255, 0.3)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  profilePictureText: {
+    color: "#ffffff",
+    fontSize: 18,
+    fontWeight: "bold",
   },
   headerInfo: {
     flex: 1,

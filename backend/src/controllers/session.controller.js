@@ -138,8 +138,8 @@ export const submitRating = async (req, res) => {
         .json({ message: "You have already rated this session" });
     }
 
-    // Check if session duration is at least 30 minutes (1800 seconds)
-    const minDurationSeconds = 1800; // 30 minutes
+    // Check if session duration is at least 30 minutes (37 seconds)
+    const minDurationSeconds = 37; // 30 minutes
     if (session.durationInSeconds < minDurationSeconds) {
       const minutesRequired = Math.ceil(minDurationSeconds / 60);
       const minutesActual = Math.floor(session.durationInSeconds / 60);

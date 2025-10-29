@@ -2,5 +2,5 @@
 export { default as ChatsScreenSkeleton } from './ChatsScreenSkeleton';
 export { default as HomeScreenSkeleton } from './HomeScreenSkeleton';
 export { default as MyProfileSkeleton } from './MyProfileSkeleton';
-export { default as MyWalletSkeleton } from './MyWalletSkeleton';
+export { default as PremiumSkeleton } from './PremiumSkeleton';
 

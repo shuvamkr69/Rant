@@ -109,7 +109,13 @@ const ListenerDetailScreen = () => {
   const handleRegister = async () => {
     try {
       // Validate required fields
-      if (!formData.name || !formData.mobileNumber) {
+      if (
+        !formData.name ||
+        !formData.mobileNumber ||
+        !profileImage ||
+        !bio ||
+        !occupation
+      ) {
         Alert.alert("Error", "Please fill in all required fields");
         return;
       }

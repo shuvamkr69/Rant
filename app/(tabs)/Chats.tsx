@@ -48,6 +48,11 @@ const Chats = () => {
     router.push(`/ChatScreen?userId=${match._id}&name=${match.name}`);
   };
 
+  const handleProfilePress = (match: any) => {
+    // @ts-ignore - Dynamic route navigation
+    router.push(`/ViewOtherProfile?userId=${match._id}`);
+  };
+
   // Ensure animated values exist for each match
   const ensureAnimatedValues = (list: any[]) => {
     list.forEach((m, index) => {
@@ -107,6 +112,11 @@ const Chats = () => {
 
             {matches.length === 0 ? (
               <View style={styles.emptyContainer}>
+                <Image
+                  source={require("../../assets/images/icons/404.png")}
+                  style={styles.emptyIcon}
+                  resizeMode="contain"
+                />
                 <Text style={[styles.emptyText, { color: colors.icon }]}>
                   No listeners matched yet. Explore and connect with listeners
                   to start ranting!
@@ -148,24 +158,29 @@ const Chats = () => {
                         activeOpacity={0.8}
                       >
                         <View style={styles.cardContent}>
-                          {(item as any).profileImage ? (
-                            <Image
-                              source={{ uri: (item as any).profileImage }}
-                              style={styles.avatarImage}
-                              resizeMode="cover"
-                            />
-                          ) : (
-                            <View
-                              style={[
-                                styles.avatar,
-                                { backgroundColor: colors.tint },
-                              ]}
-                            >
-                              <Text style={styles.avatarText}>
-                                {item.name?.charAt(0).toUpperCase()}
-                              </Text>
-                            </View>
-                          )}
+                          <TouchableOpacity
+                            onPress={() => handleProfilePress(item)}
+                            activeOpacity={0.7}
+                          >
+                            {(item as any).profileImage ? (
+                              <Image
+                                source={{ uri: (item as any).profileImage }}
+                                style={styles.avatarImage}
+                                resizeMode="cover"
+                              />
+                            ) : (
+                              <View
+                                style={[
+                                  styles.avatar,
+                                  { backgroundColor: colors.tint },
+                                ]}
+                              >
+                                <Text style={styles.avatarText}>
+                                  {item.name?.charAt(0).toUpperCase()}
+                                </Text>
+                              </View>
+                            )}
+                          </TouchableOpacity>
 
                           <View style={styles.chatInfo}>
                             <Text
@@ -221,6 +236,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 40,
+  },
+  emptyIcon: {
+    width: 150,
+    height: 150,
+    marginBottom: 20,
+    opacity: 0.7,
   },
   emptyText: {
     fontSize: 16,

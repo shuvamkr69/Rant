@@ -1,6 +1,6 @@
 import { Tabs } from "expo-router";
-import React, { useEffect } from "react";
-import { BackHandler, Platform } from "react-native";
+import React from "react";
+import { Image } from "react-native";
 
 import { useTheme } from "@/components/contexts/ThemeContext";
 import { HapticTab } from "@/components/resuables/haptic-tab";
@@ -8,24 +8,6 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 
 export default function TabLayout() {
   const { colorScheme } = useTheme();
-
-  // Handle Android back button to exit app
-  useEffect(() => {
-    if (Platform.OS === "android") {
-      const backHandler = BackHandler.addEventListener(
-        "hardwareBackPress",
-        () => {
-          // Return true to prevent default back behavior
-          // This will effectively close the app when on the tabs screen
-          BackHandler.exitApp();
-          return true;
-        }
-      );
-
-      return () => backHandler.remove();
-    }
-  }, []);
-
   return (
     <Tabs
       screenOptions={{
@@ -68,20 +50,24 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="MyWallet"
-        options={{
-          title: "Wallet",
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="creditcard.fill" color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="MyProfile"
         options={{
           title: "Profile",
           tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="person.fill" color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="Premium"
+        options={{
+          title: "",
+          tabBarIcon: ({ color }) => (
+            <Image
+              source={require("../../assets/images/icons/RantPlusLogo.png")}
+              style={{ width: 50, height: 50, tintColor: color, top: "30%" }}
+              resizeMode="contain"
+            />
           ),
         }}
       />

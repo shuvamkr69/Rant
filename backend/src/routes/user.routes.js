@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+    fetchUserProfileById,
     fetchUserStats,
     fetchWalletBalance,
     getWordCountStatus,
@@ -19,5 +20,6 @@ userRouter.post("/logout", verifyJWT, logoutUser);
 userRouter.get("/getBalance", verifyJWT, fetchWalletBalance);
 userRouter.get("/getStats", verifyJWT, fetchUserStats);
 userRouter.get("/wordCount", verifyJWT, getWordCountStatus);
+userRouter.get("/profile/:userId", verifyJWT, fetchUserProfileById);
 
 export { userRouter };
