@@ -148,6 +148,41 @@ const ViewOtherProfile = () => {
             </View>
           )}
 
+          {/* Days Available Section (for Listeners) */}
+          {profileData.daysAvailable &&
+            profileData.daysAvailable.length > 0 && (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <Ionicons name="calendar-outline" size={20} color="#c4b5fd" />
+                  <Text style={styles.sectionTitle}>Days Available</Text>
+                </View>
+                <View style={styles.sectionContent}>
+                  <View style={styles.daysContainer}>
+                    {profileData.daysAvailable.map(
+                      (day: string, index: number) => (
+                        <View key={index} style={styles.dayChip}>
+                          <Text style={styles.dayChipText}>{day}</Text>
+                        </View>
+                      )
+                    )}
+                  </View>
+                </View>
+              </View>
+            )}
+
+          {/* Timings Section (for Listeners) */}
+          {profileData.timings && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="time-outline" size={20} color="#c4b5fd" />
+                <Text style={styles.sectionTitle}>Preferred Timings</Text>
+              </View>
+              <View style={styles.sectionContent}>
+                <Text style={styles.infoText}>{profileData.timings}</Text>
+              </View>
+            </View>
+          )}
+
           {/* Age Section */}
           {profileData.age && (
             <View style={styles.section}>
@@ -170,9 +205,9 @@ const ViewOtherProfile = () => {
               </View>
               <View style={styles.sectionContent}>
                 <Text style={styles.infoText}>
-                  {new Date(profileData.createdAt).toLocaleDateString('en-US', {
-                    month: 'long',
-                    year: 'numeric',
+                  {new Date(profileData.createdAt).toLocaleDateString("en-US", {
+                    month: "long",
+                    year: "numeric",
                   })}
                 </Text>
               </View>
@@ -321,6 +356,24 @@ const styles = StyleSheet.create({
     borderRadius: 60,
     backgroundColor: "rgba(167, 139, 250, 0.1)",
     opacity: 0.5,
+  },
+  daysContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  dayChip: {
+    backgroundColor: "rgba(139, 92, 246, 0.3)",
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#8b5cf6",
+  },
+  dayChipText: {
+    color: "#ffffff",
+    fontSize: 14,
+    fontWeight: "600",
   },
 });
 

@@ -1,10 +1,25 @@
 import { useTheme } from "@/components/contexts/ThemeContext";
 import TopBar from "@/components/resuables/TopBar";
 import { PremiumSkeleton } from "@/components/skeletons";
+import {
+  endIAP,
+  finishTransaction,
+  getSubscriptions,
+  getSubscriptionStatus,
+  handlePendingPurchases,
+  initIAP,
+  purchaseSubscription,
+  restorePurchases as restorePurchasesUtil,
+  setupPurchaseUpdateListener,
+  SubscriptionProduct,
+  verifyPurchaseWithBackend,
+} from "@/components/utils/iap";
 import { Colors } from "@/constants/theme";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   Dimensions,
   ScrollView,
   StyleSheet,
@@ -18,13 +33,194 @@ const Premium = () => {
   const { colorScheme } = useTheme();
   const colors = Colors;
   const [isLoading, setIsLoading] = useState(true);
+  const [isPurchasing, setIsPurchasing] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [products, setProducts] = useState<SubscriptionProduct[]>([]);
+  const [isPremium, setIsPremium] = useState(false);
+  const [subscriptionInfo, setSubscriptionInfo] = useState<any>(null);
+  const [iapAvailable, setIapAvailable] = useState(true);
 
   const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
   useEffect(() => {
-    // Simulate loading
-    setTimeout(() => setIsLoading(false), 1000);
+    let removeListener: (() => void) | undefined;
+
+    const initialize = async () => {
+      try {
+        // Initialize IAP connection
+        const connected = await initIAP();
+        
+        if (!connected) {
+          console.warn('IAP not available - possibly running on emulator or Google Play not configured');
+          setIapAvailable(false);
+          setIsLoading(false);
+          return;
+        }
+
+        // Setup purchase listeners
+        removeListener = setupPurchaseUpdateListener(
+          async (purchase) => {
+            console.log("Purchase update received:", purchase);
+
+            try {
+              // Verify purchase with backend
+              const purchaseData = Array.isArray(purchase)
+                ? purchase[0]
+                : purchase;
+
+              const purchaseResult = {
+                transactionId: purchaseData.transactionId || "",
+                productId: purchaseData.productId,
+                purchaseToken: purchaseData.purchaseToken || "",
+                purchaseTime: purchaseData.transactionDate || Date.now(),
+              };
+
+              const verified = await verifyPurchaseWithBackend(purchaseResult);
+
+              if (verified) {
+                Alert.alert(
+                  "Success!",
+                  "Your premium subscription is now active!",
+                  [{ text: "OK", onPress: () => checkSubscriptionStatus() }]
+                );
+                await finishTransaction(purchaseData);
+              }
+            } catch (error) {
+              console.error("Error processing purchase:", error);
+              Alert.alert(
+                "Error",
+                "Failed to verify purchase. Please contact support."
+              );
+            } finally {
+              setIsPurchasing(false);
+            }
+          },
+          (error) => {
+            console.error("Purchase error:", error);
+            setIsPurchasing(false);
+
+            if ((error as any).code !== "E_USER_CANCELLED") {
+              Alert.alert(
+                "Purchase Error",
+                error.message || "Failed to complete purchase"
+              );
+            }
+          }
+        );
+
+        // Handle any pending purchases
+        await handlePendingPurchases();
+
+        // Check subscription status
+        await checkSubscriptionStatus();
+
+        // Load products
+        await loadProducts();
+      } catch (error) {
+        console.error("Error initializing:", error);
+        Alert.alert("Error", "Failed to initialize payment system");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initialize();
+
+    return () => {
+      if (removeListener) {
+        removeListener();
+      }
+      endIAP();
+    };
   }, []);
+
+  const loadProducts = async () => {
+    try {
+      const availableProducts = await getSubscriptions();
+      setProducts(availableProducts);
+    } catch (error) {
+      console.error("Error loading products:", error);
+    }
+  };
+
+  const checkSubscriptionStatus = async () => {
+    try {
+      const status = await getSubscriptionStatus();
+      setIsPremium(status.isPremium);
+      setSubscriptionInfo(status);
+    } catch (error) {
+      console.error("Error checking subscription status:", error);
+    }
+  };
+
+  const handlePurchase = async () => {
+    if (isPurchasing) return;
+
+    setIsPurchasing(true);
+
+    try {
+      const productId = products[0]?.productId || "rant_premium_monthly";
+
+      Alert.alert(
+        "Confirm Purchase",
+        `Subscribe to Rant+ Premium for ${
+          products[0]?.localizedPrice || "₹99"
+        }/month?`,
+        [
+          {
+            text: "Cancel",
+            style: "cancel",
+            onPress: () => setIsPurchasing(false),
+          },
+          {
+            text: "Subscribe",
+            onPress: async () => {
+              try {
+                const purchase = await purchaseSubscription(productId);
+
+                if (!purchase) {
+                  setIsPurchasing(false);
+                  return;
+                }
+
+                // Purchase listener will handle verification
+              } catch (error) {
+                console.error("Purchase error:", error);
+                setIsPurchasing(false);
+                Alert.alert("Error", "Failed to initiate purchase");
+              }
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error("Error:", error);
+      setIsPurchasing(false);
+      Alert.alert("Error", "Something went wrong");
+    }
+  };
+
+  const handleRestore = async () => {
+    if (isRestoring) return;
+
+    setIsRestoring(true);
+
+    try {
+      const restored = await restorePurchasesUtil();
+
+      if (restored) {
+        await checkSubscriptionStatus();
+        Alert.alert("Success", "Purchases restored successfully!");
+      } else {
+        Alert.alert("No Purchases", "No previous purchases found to restore.");
+      }
+    } catch (error) {
+      console.error("Restore error:", error);
+      Alert.alert("Error", "Failed to restore purchases");
+    } finally {
+      setIsRestoring(false);
+    }
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
@@ -38,6 +234,11 @@ const Premium = () => {
         >
           {/* Header Section with Rant+ Logo */}
           <View style={styles.headerSection}>
+            {isPremium && (
+              <View style={styles.premiumBadge}>
+                <Text style={styles.premiumBadgeText}>✓ Premium Active</Text>
+              </View>
+            )}
             <Text style={styles.tagline}>Unlock Premium Experience</Text>
             <Text style={styles.subtitle}>
               Get unlimited access to exclusive features
@@ -50,8 +251,10 @@ const Premium = () => {
               <Text style={styles.planName}>Rant+</Text>
               <Text style={styles.planDuration}>Premium Membership</Text>
               <View style={styles.priceContainer}>
-                <Text style={styles.currency}>$</Text>
-                <Text style={styles.price}>9.99</Text>
+                <Text style={styles.currency}>
+                  {products[0]?.currency === "INR" ? "₹" : "$"}
+                </Text>
+                <Text style={styles.price}>{products[0]?.price || "99"}</Text>
                 <Text style={styles.priceSubtext}>/month</Text>
               </View>
 
@@ -74,19 +277,81 @@ const Premium = () => {
                 ))}
               </View>
 
-              <TouchableOpacity
-                style={styles.subscribeButton}
-                activeOpacity={0.8}
-              >
-                <LinearGradient
-                  colors={["#b794f6", "#6b1fa8"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.buttonGradient}
-                >
-                  <Text style={styles.subscribeButtonText}>Subscribe Now</Text>
-                </LinearGradient>
-              </TouchableOpacity>
+              {!isPremium ? (
+                <>
+                  {!iapAvailable && (
+                    <View style={styles.warningBox}>
+                      <Text style={styles.warningText}>
+                        ⚠️ In-App Purchases not available
+                      </Text>
+                      <Text style={styles.warningSubtext}>
+                        Please use a real device with Google Play Store to make purchases. 
+                        IAP is not supported on emulators.
+                      </Text>
+                    </View>
+                  )}
+                  
+                  <TouchableOpacity
+                    style={[
+                      styles.subscribeButton,
+                      (isPurchasing || !iapAvailable) && styles.disabledButton,
+                    ]}
+                    activeOpacity={0.8}
+                    onPress={handlePurchase}
+                    disabled={isPurchasing || !iapAvailable}
+                  >
+                    <LinearGradient
+                      colors={
+                        isPurchasing || !iapAvailable
+                          ? ["#6b6b6b", "#4a4a4a"]
+                          : ["#b794f6", "#6b1fa8"]
+                      }
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.buttonGradient}
+                    >
+                      {isPurchasing ? (
+                        <ActivityIndicator color="#FFFFFF" />
+                      ) : (
+                        <Text style={styles.subscribeButtonText}>
+                          Subscribe Now
+                        </Text>
+                      )}
+                    </LinearGradient>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.restoreButton}
+                    onPress={handleRestore}
+                    disabled={isRestoring || !iapAvailable}
+                  >
+                    {isRestoring ? (
+                      <ActivityIndicator color="#b794f6" size="small" />
+                    ) : (
+                      <Text style={[styles.restoreButtonText, !iapAvailable && styles.disabledText]}>
+                        Restore Purchases
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <View style={styles.activeSubscriptionInfo}>
+                  <Text style={styles.activeText}>✓ Subscription Active</Text>
+                  {subscriptionInfo?.expiryDate && (
+                    <Text style={styles.expiryText}>
+                      Expires:{" "}
+                      {new Date(
+                        subscriptionInfo.expiryDate
+                      ).toLocaleDateString()}
+                    </Text>
+                  )}
+                </View>
+              )}
+
+              <Text style={styles.termsText}>
+                Subscription auto-renews monthly. Cancel anytime from your
+                Google Play Store account settings.
+              </Text>
             </View>
           </View>
         </ScrollView>
@@ -106,6 +371,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 30,
     paddingHorizontal: 20,
+  },
+  premiumBadge: {
+    backgroundColor: "#6b1fa8",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginBottom: 12,
+  },
+  premiumBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "600",
   },
   logoContainer: {
     marginBottom: 20,
@@ -223,6 +500,10 @@ const styles = StyleSheet.create({
   subscribeButton: {
     borderRadius: 16,
     overflow: "hidden",
+    marginBottom: 12,
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
   buttonGradient: {
     paddingVertical: 16,
@@ -233,6 +514,61 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     color: "#FFFFFF",
+  },
+  restoreButton: {
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  restoreButtonText: {
+    fontSize: 14,
+    color: "#b794f6",
+    fontWeight: "600",
+  },
+  disabledText: {
+    color: "#6b6b6b",
+  },
+  warningBox: {
+    backgroundColor: "#3d2a1f",
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#f6b794",
+  },
+  warningText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#f6b794",
+    marginBottom: 8,
+  },
+  warningSubtext: {
+    fontSize: 12,
+    color: "#d9a779",
+    lineHeight: 18,
+  },
+  activeSubscriptionInfo: {
+    backgroundColor: "#2a1f3d",
+    padding: 16,
+    borderRadius: 12,
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  activeText: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#6FCF97",
+    marginBottom: 4,
+  },
+  expiryText: {
+    fontSize: 14,
+    color: "#9BA1A6",
+  },
+  termsText: {
+    fontSize: 11,
+    color: "#6b6b6b",
+    textAlign: "center",
+    marginTop: 12,
+    lineHeight: 16,
   },
 });
 

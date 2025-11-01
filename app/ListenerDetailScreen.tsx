@@ -1,5 +1,6 @@
 import { useAuth } from "@/components/contexts/authContext";
 import BackButton from "@/components/resuables/BackButton";
+import PickerComponent from "@/components/resuables/PickerComponent";
 import { api } from "@/components/utils/api";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -32,6 +33,23 @@ const { width, height } = Dimensions.get("window");
 
 const RATE_VALUES = [20, 40, 60, 80, 100];
 
+const DAYS_OPTIONS = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+];
+
+const TIMINGS_OPTIONS = [
+  "Morning (6AM - 12PM)",
+  "Afternoon (12PM - 6PM)",
+  "Evening (6PM - 10PM)",
+  "Night (10PM - 2AM)",
+];
+
 const ListenerDetailScreen = () => {
   const router = useRouter();
   const [profileImage, setProfileImage] = useState<string | null>(null);
@@ -40,6 +58,8 @@ const ListenerDetailScreen = () => {
   const [charge, setCharge] = useState(RATE_VALUES[2]);
   const [occupation, setOccupation] = useState("");
   const [userType, setUserType] = useState<"User" | "Listener">("User");
+  const [selectedDays, setSelectedDays] = useState<string[]>([]);
+  const [timings, setTimings] = useState("");
 
   const scale = useSharedValue(1);
 
@@ -114,9 +134,14 @@ const ListenerDetailScreen = () => {
         !formData.mobileNumber ||
         !profileImage ||
         !bio ||
-        !occupation
+        !occupation ||
+        selectedDays.length === 0 ||
+        !timings
       ) {
-        Alert.alert("Error", "Please fill in all required fields");
+        Alert.alert(
+          "Error",
+          "Please fill in all required fields including days available and timings"
+        );
         return;
       }
 
@@ -128,6 +153,8 @@ const ListenerDetailScreen = () => {
       formDataToSend.append("bio", bio);
       formDataToSend.append("occupation", occupation);
       formDataToSend.append("age", formData.age.toString());
+      formDataToSend.append("daysAvailable", JSON.stringify(selectedDays));
+      formDataToSend.append("timings", timings);
 
       // Add profile image if selected
       if (profileImage) {
@@ -258,7 +285,7 @@ const ListenerDetailScreen = () => {
                       style={styles.inputIcon}
                     />
                     <TextInput
-                      placeholder="e.g., Mental Health, Career Counseling"
+                      placeholder="e.g., Therapist"
                       placeholderTextColor="#a78bfa"
                       style={styles.input}
                       value={occupation}
@@ -294,6 +321,90 @@ const ListenerDetailScreen = () => {
                     />
                   </LinearGradient>
                 </View>
+              </View>
+
+              {/* Days Available Picker */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>
+                  <Ionicons name="calendar-outline" size={16} color="#c4b5fd" />{" "}
+                  Days Available
+                </Text>
+                <View style={styles.daysContainer}>
+                  {DAYS_OPTIONS.map((day) => {
+                    const isSelected = selectedDays.includes(day);
+                    return (
+                      <TouchableOpacity
+                        key={day}
+                        onPress={() => {
+                          if (isSelected) {
+                            setSelectedDays(
+                              selectedDays.filter((d) => d !== day)
+                            );
+                          } else {
+                            setSelectedDays([...selectedDays, day]);
+                          }
+                        }}
+                        activeOpacity={0.8}
+                      >
+                        {isSelected ? (
+                          <LinearGradient
+                            colors={["#7c3aed", "#9333ea", "#a855f7"]}
+                            style={styles.dayBubbleGradient}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                          >
+                            <View style={styles.dayBubble}>
+                              <Text
+                                style={[styles.dayText, { color: "#ffffff" }]}
+                              >
+                                {day.substring(0, 3)}
+                              </Text>
+                            </View>
+                          </LinearGradient>
+                        ) : (
+                          <View
+                            style={[
+                              styles.dayBubble,
+                              styles.dayBubbleUnselected,
+                            ]}
+                          >
+                            <Text
+                              style={[styles.dayText, { color: "#c4b5fd" }]}
+                            >
+                              {day.substring(0, 3)}
+                            </Text>
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+
+              {/* Timings Picker */}
+              <View style={styles.inputGroup}>
+                <PickerComponent
+                  label={
+                    <View
+                      style={{ flexDirection: "row", alignItems: "center" }}
+                    >
+                      <Ionicons name="time-outline" size={16} color="#c4b5fd" />
+                      <Text
+                        style={{
+                          color: "#e9d5ff",
+                          fontSize: 16,
+                          fontWeight: "600",
+                          marginLeft: 8,
+                        }}
+                      >
+                        Preferred Timings
+                      </Text>
+                    </View>
+                  }
+                  selectedValue={timings}
+                  options={TIMINGS_OPTIONS}
+                  onValueChange={setTimings}
+                />
               </View>
             </Animated.View>
 
@@ -635,6 +746,34 @@ const styles = StyleSheet.create({
     borderRadius: 50,
     backgroundColor: "rgba(196, 181, 253, 0.1)",
     opacity: 0.5,
+  },
+  daysContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginTop: 5,
+  },
+  dayBubbleGradient: {
+    borderRadius: 20,
+    padding: 2,
+  },
+  dayBubble: {
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    minWidth: 60,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#1a0033",
+  },
+  dayBubbleUnselected: {
+    backgroundColor: "rgba(139, 92, 246, 0.15)",
+    borderWidth: 1,
+    borderColor: "rgba(167, 139, 250, 0.3)",
+  },
+  dayText: {
+    fontWeight: "bold",
+    fontSize: 14,
   },
 });
 

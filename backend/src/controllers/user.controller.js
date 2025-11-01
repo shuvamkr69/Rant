@@ -31,7 +31,16 @@ export const fetchUserStats = async (req, res) => {
 };
 
 export const registerUser = async (req, res) => {
-  const { name, mobileNumber, userType, age, bio, occupation } = req.body;
+  const {
+    name,
+    mobileNumber,
+    userType,
+    age,
+    bio,
+    occupation,
+    daysAvailable,
+    timings,
+  } = req.body;
 
   if (!name || !mobileNumber) {
     return res.status(400).json({ message: "All fields are required" });
@@ -55,6 +64,19 @@ export const registerUser = async (req, res) => {
     profileImageUrl = await uploadToCloudinary(req.file.path, "profiles");
   }
 
+  // Parse daysAvailable if it's a string (from FormData)
+  let parsedDaysAvailable = [];
+  if (daysAvailable) {
+    try {
+      parsedDaysAvailable =
+        typeof daysAvailable === "string"
+          ? JSON.parse(daysAvailable)
+          : daysAvailable;
+    } catch (error) {
+      console.error("Error parsing daysAvailable:", error);
+    }
+  }
+
   const newUser = await User.create({
     name,
     mobileNumber,
@@ -63,6 +85,8 @@ export const registerUser = async (req, res) => {
     bio,
     occupation,
     profileImage: profileImageUrl,
+    daysAvailable: parsedDaysAvailable,
+    timings,
   });
 
   // Create stats document for the new user
@@ -244,7 +268,7 @@ export const getWordCountStatus = async (req, res) => {
 export const fetchUserProfileById = async (req, res) => {
   try {
     const { userId } = req.params;
-    
+
     if (!userId) {
       return res.status(400).json({ message: "User ID is required" });
     }

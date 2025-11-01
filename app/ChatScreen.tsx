@@ -57,7 +57,9 @@ export default function ChatScreen() {
   const [isExiting, setIsExiting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [showRatingModal, setShowRatingModal] = useState(false);
-  const [otherUserProfileImage, setOtherUserProfileImage] = useState<string | null>(null);
+  const [otherUserProfileImage, setOtherUserProfileImage] = useState<
+    string | null
+  >(null);
 
   // Check if session is active (both users present and session has started)
   const isSessionActive =
@@ -431,7 +433,7 @@ export default function ChatScreen() {
         >
           <Ionicons name="arrow-back" size={24} color="#ffffff" />
         </TouchableOpacity>
-        
+
         {/* Profile Picture */}
         <TouchableOpacity
           onPress={() => {
@@ -461,7 +463,9 @@ export default function ChatScreen() {
               router.push(`/ViewOtherProfile?userId=${userId}`);
             }}
           >
-            <Text style={[styles.headerName, { color: "#ffffff" }]}>{name}</Text>
+            <Text style={[styles.headerName, { color: "#ffffff" }]}>
+              {name}
+            </Text>
           </TouchableOpacity>
 
           {/* Word Count for Users */}

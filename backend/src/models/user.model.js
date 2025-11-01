@@ -13,6 +13,21 @@ const userSchema = new mongoose.Schema(
     occupation: { type: String }, // Occupation of the Listener
     comments: { type: [String] }, // Comments for the Listener
     refreshToken: { type: String },
+    // Premium subscription fields
+    isPremium: { type: Boolean, default: false }, // Premium status
+    subscriptionId: { type: String }, // Subscription identifier from store
+    subscriptionStatus: {
+      type: String,
+      enum: ["active", "expired", "cancelled", "pending", null],
+      default: null,
+    }, // Subscription status
+    subscriptionExpiryDate: { type: Date }, // When the subscription expires
+    subscriptionPlatform: {
+      type: String,
+      enum: ["android", "ios", null],
+      default: null,
+    }, // Platform where subscription was purchased
+    subscriptionProductId: { type: String }, // Product ID from store
   },
   { timestamps: true }
 );
