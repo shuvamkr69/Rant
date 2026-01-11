@@ -1,3 +1,4 @@
+import jwt from "jsonwebtoken";
 import { ListenerStats } from "../models/listenerStat.model.js";
 import { User } from "../models/user.model.js";
 import { UserStats } from "../models/userStats.model.js";
@@ -108,6 +109,7 @@ export const registerUser = async (req, res) => {
     message: "User registered successfully",
     user: newUser,
     accessToken,
+    refreshToken,
   });
 };
 
@@ -123,10 +125,12 @@ export const loginUser = async (req, res) => {
   const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
     user._id
   );
+  console.log({ accessToken });
   return res.status(200).json({
     message: "Login successful",
     user,
     accessToken,
+    refreshToken,
   });
 };
 
@@ -202,12 +206,20 @@ export const fetchWalletBalance = async (req, res) => {
       console.log(`🔄 Word count reset for user ${userId}`);
     }
 
+    // Check if user has active premium subscription
+    const isPremium = user.isPremium && user.subscriptionStatus === "active";
+    const wordLimit = isPremium ? -1 : stats.monthlyWordLimit; // -1 means unlimited
+    const wordsRemaining = isPremium
+      ? -1
+      : stats.monthlyWordLimit - stats.wordsUsedThisMonth;
+
     res.status(200).json({
       walletBalance: stats.walletBalance,
       wordsUsed: stats.wordsUsedThisMonth,
-      wordLimit: stats.monthlyWordLimit,
-      wordsRemaining: stats.monthlyWordLimit - stats.wordsUsedThisMonth,
+      wordLimit: wordLimit,
+      wordsRemaining: wordsRemaining,
       lastWordResetDate: stats.lastWordResetDate,
+      isPremium: isPremium,
     });
   }
 };
@@ -248,15 +260,20 @@ export const getWordCountStatus = async (req, res) => {
       await stats.save();
     }
 
+    // Check if user has active premium subscription
+    const isPremium = user.isPremium && user.subscriptionStatus === "active";
+    const wordLimit = isPremium ? -1 : stats.monthlyWordLimit; // -1 means unlimited
+    const wordsRemaining = isPremium
+      ? -1
+      : Math.max(0, stats.monthlyWordLimit - stats.wordsUsedThisMonth);
+
     res.status(200).json({
       wordsUsed: stats.wordsUsedThisMonth,
-      wordLimit: stats.monthlyWordLimit,
-      wordsRemaining: Math.max(
-        0,
-        stats.monthlyWordLimit - stats.wordsUsedThisMonth
-      ),
+      wordLimit: wordLimit,
+      wordsRemaining: wordsRemaining,
       lastWordResetDate: stats.lastWordResetDate,
       daysUntilReset: Math.max(0, 30 - daysSinceReset),
+      isPremium: isPremium,
     });
   } catch (error) {
     console.error("❌ Error fetching word count status:", error);
@@ -285,6 +302,84 @@ export const fetchUserProfileById = async (req, res) => {
   } catch (error) {
     console.error("❌ Error fetching user profile:", error);
     res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+export const updatePushToken = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { pushToken } = req.body;
+
+    if (!pushToken) {
+      return res.status(400).json({ message: "Push token is required" });
+    }
+
+    await User.findByIdAndUpdate(userId, { pushToken });
+
+    console.log(`✅ Push token updated for user ${userId}`);
+    res.status(200).json({ message: "Push token updated successfully" });
+  } catch (error) {
+    console.error("❌ Error updating push token:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+export const removePushToken = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    await User.findByIdAndUpdate(userId, { pushToken: null });
+
+    console.log(`✅ Push token removed for user ${userId}`);
+    res.status(200).json({ message: "Push token removed successfully" });
+  } catch (error) {
+    console.error("❌ Error removing push token:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+export const refreshAccessToken = async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      return res.status(401).json({ message: "Refresh token required" });
+    }
+
+    // Verify the refresh token
+    let decoded;
+    try {
+      decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+    } catch (error) {
+      return res
+        .status(401)
+        .json({ message: "Invalid or expired refresh token" });
+    }
+
+    // Find user and verify the refresh token matches what's stored
+    const user = await User.findById(decoded._id);
+    if (!user || user.refreshToken !== refreshToken) {
+      return res.status(401).json({ message: "Invalid refresh token" });
+    }
+
+    // Generate new tokens
+    const { accessToken, refreshToken: newRefreshToken } =
+      await generateAccessAndRefreshTokens(user._id);
+
+    console.log(
+      `🔄 Access token refreshed for user ${user._id} (${user.name})`
+    );
+
+    return res.status(200).json({
+      message: "Token refreshed successfully",
+      accessToken,
+      refreshToken: newRefreshToken,
+    });
+  } catch (error) {
+    console.error("❌ Error refreshing token:", error);
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
   }
 };
 

@@ -1,6 +1,14 @@
 import { useAuth } from "@/components/contexts/authContext";
 import BackButton from "@/components/resuables/BackButton";
 import { api } from "@/components/utils/api";
+import {
+  registerForPushNotificationsAsync,
+  sendPushTokenToBackend,
+} from "@/components/utils/notifications";
+import {
+  setAccessToken,
+  setRefreshToken,
+} from "@/components/utils/tokenStorage";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
@@ -147,12 +155,25 @@ const UserDetailScreen = () => {
       );
 
       if (response.status === 201) {
-        await AsyncStorage.removeItem("accessToken");
-        await AsyncStorage.removeItem("isSignedIn");
-        const newToken = response.data.accessToken;
-        await AsyncStorage.setItem("accessToken", newToken);
+        const { accessToken, refreshToken } = response.data;
+
+        // Store tokens in memory and secure storage
+        setAccessToken(accessToken);
+        await setRefreshToken(refreshToken);
 
         await signIn();
+
+        // Register push token after signup (non-blocking)
+        registerForPushNotificationsAsync()
+          .then((pushToken) => {
+            if (pushToken) {
+              sendPushTokenToBackend(pushToken);
+            }
+          })
+          .catch((error) => {
+            console.error("Failed to register push token:", error);
+          });
+
         Alert.alert("Success", "Profile created successfully!");
         navigation.replace("/(tabs)" as any);
       }

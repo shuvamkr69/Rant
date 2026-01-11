@@ -6,6 +6,7 @@ import { Profile } from "./models/profile.model.js";
 import { Session } from "./models/session.model.js";
 import { User } from "./models/user.model.js";
 import { UserStats } from "./models/userStats.model.js";
+import { sendPushNotification } from "./utils/pushNotification.js";
 
 let io;
 const userSockets = new Map(); // Map userId to socketId
@@ -204,74 +205,87 @@ export const initializeSocket = (server) => {
 
         // Check if the other user is a regular User and has exhausted their word limit
         if (otherUser.userType === "User") {
-          const otherUserStats = await UserStats.findOne({
-            userId: otherUserId,
-          });
-          if (otherUserStats) {
-            // Check for monthly reset
-            const now = new Date();
-            const daysSinceReset = Math.floor(
-              (now - new Date(otherUserStats.lastWordResetDate)) /
-                (1000 * 60 * 60 * 24)
-            );
+          const otherUserIsPremium =
+            otherUser.isPremium && otherUser.subscriptionStatus === "active";
 
-            let wordsRemaining =
-              otherUserStats.monthlyWordLimit -
-              otherUserStats.wordsUsedThisMonth;
-
-            // If reset needed, they have full limit
-            if (daysSinceReset >= 30) {
-              wordsRemaining = otherUserStats.monthlyWordLimit;
-            }
-
-            // If other user has no words left, notify current user (likely the Listener)
-            if (wordsRemaining <= 0 && currentUser.userType === "Listener") {
-              socket.emit("other_user_word_limit_exhausted", {
-                userId: otherUserId,
-                userName: otherUser.name,
-                message: `${otherUser.name} has exhausted their monthly word limit.`,
-              });
-              console.log(
-                `⚠️ Notified Listener ${currentUserId} that User ${otherUserId} has no words left`
+          // Only check word limits if user is not premium
+          if (!otherUserIsPremium) {
+            const otherUserStats = await UserStats.findOne({
+              userId: otherUserId,
+            });
+            if (otherUserStats) {
+              // Check for monthly reset
+              const now = new Date();
+              const daysSinceReset = Math.floor(
+                (now - new Date(otherUserStats.lastWordResetDate)) /
+                  (1000 * 60 * 60 * 24)
               );
+
+              let wordsRemaining =
+                otherUserStats.monthlyWordLimit -
+                otherUserStats.wordsUsedThisMonth;
+
+              // If reset needed, they have full limit
+              if (daysSinceReset >= 30) {
+                wordsRemaining = otherUserStats.monthlyWordLimit;
+              }
+
+              // If other user has no words left, notify current user (likely the Listener)
+              if (wordsRemaining <= 0 && currentUser.userType === "Listener") {
+                socket.emit("other_user_word_limit_exhausted", {
+                  userId: otherUserId,
+                  userName: otherUser.name,
+                  message: `${otherUser.name} has exhausted their monthly word limit.`,
+                });
+                console.log(
+                  `⚠️ Notified Listener ${currentUserId} that User ${otherUserId} has no words left`
+                );
+              }
             }
           }
         }
 
         // Check if current user is a regular User and has exhausted their word limit
         if (currentUser.userType === "User") {
-          const currentUserStats = await UserStats.findOne({
-            userId: currentUserId,
-          });
-          if (currentUserStats) {
-            // Check for monthly reset
-            const now = new Date();
-            const daysSinceReset = Math.floor(
-              (now - new Date(currentUserStats.lastWordResetDate)) /
-                (1000 * 60 * 60 * 24)
-            );
+          const currentUserIsPremium =
+            currentUser.isPremium &&
+            currentUser.subscriptionStatus === "active";
 
-            let wordsRemaining =
-              currentUserStats.monthlyWordLimit -
-              currentUserStats.wordsUsedThisMonth;
+          // Only check word limits if user is not premium
+          if (!currentUserIsPremium) {
+            const currentUserStats = await UserStats.findOne({
+              userId: currentUserId,
+            });
+            if (currentUserStats) {
+              // Check for monthly reset
+              const now = new Date();
+              const daysSinceReset = Math.floor(
+                (now - new Date(currentUserStats.lastWordResetDate)) /
+                  (1000 * 60 * 60 * 24)
+              );
 
-            // If reset needed, they have full limit
-            if (daysSinceReset >= 30) {
-              wordsRemaining = currentUserStats.monthlyWordLimit;
-            }
+              let wordsRemaining =
+                currentUserStats.monthlyWordLimit -
+                currentUserStats.wordsUsedThisMonth;
 
-            // If current user has no words left and other is a Listener, notify them
-            if (wordsRemaining <= 0 && otherUser.userType === "Listener") {
-              const otherSocketId = userSockets.get(otherUserId.toString());
-              if (otherSocketId) {
-                io.to(otherSocketId).emit("other_user_word_limit_exhausted", {
-                  userId: currentUserId,
-                  userName: currentUser.name,
-                  message: `${currentUser.name} has exhausted their monthly word limit.`,
-                });
-                console.log(
-                  `⚠️ Notified Listener ${otherUserId} that User ${currentUserId} has no words left`
-                );
+              // If reset needed, they have full limit
+              if (daysSinceReset >= 30) {
+                wordsRemaining = currentUserStats.monthlyWordLimit;
+              }
+
+              // If current user has no words left and other is a Listener, notify them
+              if (wordsRemaining <= 0 && otherUser.userType === "Listener") {
+                const otherSocketId = userSockets.get(otherUserId.toString());
+                if (otherSocketId) {
+                  io.to(otherSocketId).emit("other_user_word_limit_exhausted", {
+                    userId: currentUserId,
+                    userName: currentUser.name,
+                    message: `${currentUser.name} has exhausted their monthly word limit.`,
+                  });
+                  console.log(
+                    `⚠️ Notified Listener ${otherUserId} that User ${currentUserId} has no words left`
+                  );
+                }
               }
             }
           }
@@ -412,8 +426,11 @@ export const initializeSocket = (server) => {
         // Get sender and receiver info
         const senderUser = await User.findById(senderId);
 
-        // Check word limit only if sender is a "User" (not Listener)
-        if (senderUser.userType === "User") {
+        // Check word limit only if sender is a "User" (not Listener) and not premium
+        const isPremium =
+          senderUser.isPremium && senderUser.subscriptionStatus === "active";
+
+        if (senderUser.userType === "User" && !isPremium) {
           // Count words in the message
           const wordCount = message
             .trim()
@@ -544,6 +561,15 @@ export const initializeSocket = (server) => {
           console.log(`✅ Message delivered to ${receiverId}`);
         } else {
           console.log(`⚠️ Receiver ${receiverId} is offline`);
+
+          // Send push notification if receiver is offline
+          const messagePreview =
+            message.length > 50 ? message.substring(0, 50) + "..." : message;
+          await sendPushNotification(
+            receiverId,
+            `New message from ${senderUser.name}`,
+            messagePreview
+          );
         }
       } catch (error) {
         console.error("❌ Error sending message:", error);
@@ -812,10 +838,24 @@ const endSession = async (roomId, sessionData, status = "completed") => {
         ...sessionEndData,
         requestRating: activeDurationInSeconds >= 37, // Only request rating if 30+ minutes (37 seconds)
       });
+    } else {
+      // Send push notification to user if offline
+      await sendPushNotification(
+        userId,
+        "Session Ended",
+        "Your session has ended. Thanks for being part of the conversation."
+      );
     }
 
     if (listenerSocketId) {
       io.to(listenerSocketId).emit("session_ended", sessionEndData);
+    } else {
+      // Send push notification to listener if offline
+      await sendPushNotification(
+        listenerId,
+        "Session Ended",
+        "Your session has ended. Thanks for being part of the conversation."
+      );
     }
 
     // Remove from active sessions

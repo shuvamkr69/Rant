@@ -1,5 +1,16 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createContext, useContext, useEffect, useState } from "react";
+import {
+  registerForPushNotificationsAsync,
+  removePushTokenFromBackend,
+  sendPushTokenToBackend,
+  setupNotificationListeners,
+} from "../utils/notifications";
+import {
+  clearAllTokens,
+  getAccessToken,
+  initializeAccessToken,
+} from "../utils/tokenStorage";
 
 type AuthContextType = {
   isSignedIn: boolean;
@@ -22,17 +33,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const checkStatus = async () => {
       try {
+        // Initialize access token from AsyncStorage (one-time migration)
+        await initializeAccessToken();
+
         const storedState = await AsyncStorage.getItem("isSignedIn");
-        const accessToken = await AsyncStorage.getItem("accessToken");
+        const accessToken = getAccessToken();
         const premiumStatus = await AsyncStorage.getItem("isPremium");
 
         console.log("Stored state:", storedState);
-        console.log("Access Token:", accessToken);
+        console.log("Access Token:", accessToken ? "present" : "null");
         console.log("Premium Status:", premiumStatus);
 
         if (storedState === "true" && accessToken) {
           setIsSignedIn(true);
           setIsPremium(premiumStatus === "true");
+
+          // Register push token when app opens and user is signed in (non-blocking)
+          registerForPushNotificationsAsync()
+            .then((pushToken) => {
+              if (pushToken) {
+                sendPushTokenToBackend(pushToken);
+              }
+            })
+            .catch((error) => {
+              console.error("Failed to register push token:", error);
+            });
         }
       } catch (error) {
         console.error("Error checking auth status:", error);
@@ -41,6 +66,32 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     };
     checkStatus();
+
+    // Setup notification listeners
+    const cleanup = setupNotificationListeners();
+
+    // Listen for forced logout events from API interceptor
+    const handleForceLogout = (event: any) => {
+      console.log("🔔 [Auth] Received force logout event:", event.detail);
+      signOut();
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener(
+        "forceLogout",
+        handleForceLogout as EventListener
+      );
+    }
+
+    return () => {
+      cleanup();
+      if (typeof window !== "undefined") {
+        window.removeEventListener(
+          "forceLogout",
+          handleForceLogout as EventListener
+        );
+      }
+    };
   }, []);
 
   const signIn = async () => {
@@ -51,9 +102,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signOut = async () => {
     try {
       console.log("🔓 Signing out - Removing tokens from storage");
+
+      // Remove push token from backend (non-blocking, best effort)
+      removePushTokenFromBackend().catch((error) => {
+        console.error("Failed to remove push token:", error);
+      });
+
+      // Clear all tokens
+      await clearAllTokens();
+
+      // Clear auth state
       await AsyncStorage.removeItem("isSignedIn");
-      await AsyncStorage.removeItem("accessToken");
       await AsyncStorage.removeItem("isPremium");
+
       setIsSignedIn(false);
       setUser(null);
       setIsPremium(false);

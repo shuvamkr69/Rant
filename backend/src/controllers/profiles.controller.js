@@ -1,6 +1,7 @@
 import { ListenerStats } from "../models/listenerStat.model.js";
 import { Profile } from "../models/profile.model.js";
 import { User } from "../models/user.model.js";
+import { sendPushNotification } from "../utils/pushNotification.js";
 
 export const fetchProfiles = async (req, res) => {
   const ownUserId = req.user._id;
@@ -201,6 +202,27 @@ export const acceptProfile = async (req, res) => {
     });
 
     console.log("✅ Profile record created:", newProfile);
+
+    // Check for mutual match
+    const reverseProfile = await Profile.findOne({
+      userId: otherUserId,
+      otherUserId: ownUserId,
+      Status: "accepted",
+    });
+
+    if (reverseProfile) {
+      console.log("🎉 Mutual match detected!");
+
+      // Send notification to User if Listener accepted
+      if (currentUser.userType === "Listener" && findId.userType === "User") {
+        await sendPushNotification(
+          otherUserId,
+          "Listener Matched 🎧",
+          "A listener has accepted your invite. You can start chatting now!"
+        );
+      }
+    }
+
     res.status(200).json({ message: "Profile accepted", profile: newProfile });
   } catch (error) {
     console.error("❌ Error in acceptProfile:", error);

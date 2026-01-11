@@ -1,6 +1,13 @@
 import { useAuth } from "@/components/contexts/authContext";
 import { api } from "@/components/utils/api";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import {
+  registerForPushNotificationsAsync,
+  sendPushTokenToBackend,
+} from "@/components/utils/notifications";
+import {
+  setAccessToken,
+  setRefreshToken,
+} from "@/components/utils/tokenStorage";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -18,12 +25,12 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 const Login = () => {
   const navigation = useRouter();
   const { signIn } = useAuth();
-   const colors = {
-     background: "#000000",
-     text: "#ffffff",
-     icon: "#adadadff",
-     tint: "#ff0000ff"
-   };
+  const colors = {
+    background: "#000000",
+    text: "#ffffff",
+    icon: "#adadadff",
+    tint: "#ff0000ff",
+  };
   const [formData, setFormData] = useState({
     mobileNumber: "",
   });
@@ -35,21 +42,34 @@ const Login = () => {
       });
 
       if (response.status === 200) {
-        await AsyncStorage.removeItem("accessToken");
-        await AsyncStorage.removeItem("isSignedIn");
+        const { accessToken, refreshToken } = response.data;
 
-        const newToken = response.data.accessToken;
-        await AsyncStorage.setItem("accessToken", newToken);
+        // Store tokens in memory and secure storage
+        setAccessToken(accessToken);
+        await setRefreshToken(refreshToken);
 
-        await signIn(); 
+        await signIn();
+
+        // Register push token after login (non-blocking)
+        registerForPushNotificationsAsync()
+          .then((pushToken) => {
+            if (pushToken) {
+              sendPushTokenToBackend(pushToken);
+            }
+          })
+          .catch((error) => {
+            console.error("Failed to register push token:", error);
+          });
+
         navigation.replace("/(tabs)");
       }
     } catch (error) {
+      console.error("Login error:", error);
     }
   };
   return (
     <SafeAreaProvider>
-  <View style={[styles.loginPage, { backgroundColor: colors.background }]}>
+      <View style={[styles.loginPage, { backgroundColor: colors.background }]}>
         <View style={styles.topImageContainer}>
           <Image
             source={require("@/assets/images/RegisterLoginScreenTopImage.png")}
@@ -64,14 +84,16 @@ const Login = () => {
         </View>
 
         <View style={styles.contentContainer}>
-          <Text style={[styles.headingText, { color: colors.text }]}>Login</Text>
-          
+          <Text style={[styles.headingText, { color: colors.text }]}>
+            Login
+          </Text>
+
           <View style={styles.inputContainer}>
             <View>
               <TextInput
-                  style={styles.input}
+                style={styles.input}
                 placeholder="Your Mobile Number"
-                  placeholderTextColor={"#adadadff"}
+                placeholderTextColor={"#adadadff"}
                 onChangeText={(value) =>
                   setFormData({ ...formData, mobileNumber: value })
                 }
@@ -79,16 +101,14 @@ const Login = () => {
               ></TextInput>
             </View>
           </View>
-          
+
           <View>
             <TouchableOpacity
-                style={styles.loginButton}
+              style={styles.loginButton}
               activeOpacity={0.9}
               onPress={handleLogin}
             >
-                <Text style={styles.loginButtonText}>
-                Login
-              </Text>
+              <Text style={styles.loginButtonText}>Login</Text>
             </TouchableOpacity>
           </View>
 
@@ -97,10 +117,10 @@ const Login = () => {
             onPress={() => navigation.replace("/Register")}
           >
             <View style={styles.goToRegisterScreenContainer}>
-                <Text style={styles.dontHaveAccountText}>
+              <Text style={styles.dontHaveAccountText}>
                 Don't have an account?{" "}
               </Text>
-                <Text style={styles.goToRegisterScreen}>Register</Text>
+              <Text style={styles.goToRegisterScreen}>Register</Text>
             </View>
           </TouchableOpacity>
         </View>

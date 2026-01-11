@@ -287,6 +287,7 @@ export default function MyProfile() {
         <MyProfileSkeleton />
       ) : (
         <ScrollView
+          showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 40 }}
           refreshControl={
             <RefreshControl

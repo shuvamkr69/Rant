@@ -15,6 +15,7 @@ import {
   verifyPurchaseWithBackend,
 } from "@/components/utils/iap";
 import { Colors } from "@/constants/theme";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useState } from "react";
 import {
@@ -46,27 +47,62 @@ const Premium = () => {
     let removeListener: (() => void) | undefined;
 
     const initialize = async () => {
+      console.log("🔵 [Premium] Starting initialization...");
       try {
+        // DEBUG: Check auth status
+        const token = await AsyncStorage.getItem("accessToken");
+        const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
+        console.log("🔵 [Premium] Auth token exists:", !!token);
+        console.log("🔵 [Premium] Backend URL:", backendUrl);
+
+        if (!token) {
+          Alert.alert(
+            "⚠️ DEBUG: Not Logged In",
+            "No auth token found. Please log in first before purchasing."
+          );
+        }
+
         // Initialize IAP connection
+        console.log("🔵 [Premium] Initializing IAP connection...");
         const connected = await initIAP();
-        
+        console.log("🔵 [Premium] IAP initialization result:", connected);
+
         if (!connected) {
-          console.warn('IAP not available - possibly running on emulator or Google Play not configured');
+          console.warn(
+            "⚠️ [Premium] IAP not available - possibly running on emulator or Google Play not configured"
+          );
           setIapAvailable(false);
           setIsLoading(false);
           return;
         }
 
+        console.log("✅ [Premium] IAP connected successfully");
+
         // Setup purchase listeners
+        console.log("🔵 [Premium] Setting up purchase listeners...");
         removeListener = setupPurchaseUpdateListener(
           async (purchase) => {
-            console.log("Purchase update received:", purchase);
+            console.log(
+              "✅ [Premium] Purchase update received in component:",
+              JSON.stringify(purchase, null, 2)
+            );
+
+            // DEBUG: Show purchase received
+            Alert.alert(
+              "DEBUG: Step 1",
+              "Purchase received from Play Store\n\nProcessing..."
+            );
 
             try {
               // Verify purchase with backend
               const purchaseData = Array.isArray(purchase)
                 ? purchase[0]
                 : purchase;
+
+              console.log(
+                "🔵 [Premium] Processing purchase data:",
+                JSON.stringify(purchaseData, null, 2)
+              );
 
               const purchaseResult = {
                 transactionId: purchaseData.transactionId || "",
@@ -75,28 +111,69 @@ const Premium = () => {
                 purchaseTime: purchaseData.transactionDate || Date.now(),
               };
 
+              // DEBUG: Show verification starting
+              Alert.alert(
+                "DEBUG: Step 2",
+                `Verifying with backend...\n\nProduct: ${
+                  purchaseResult.productId
+                }\nTransaction: ${purchaseResult.transactionId.substring(
+                  0,
+                  20
+                )}...`
+              );
+
+              console.log("🔵 [Premium] Verifying purchase with backend...");
               const verified = await verifyPurchaseWithBackend(purchaseResult);
+              console.log("🔵 [Premium] Verification result:", verified);
 
               if (verified) {
+                console.log("✅ [Premium] Purchase verified successfully!");
+                // DEBUG: Show success
                 Alert.alert(
-                  "Success!",
-                  "Your premium subscription is now active!",
-                  [{ text: "OK", onPress: () => checkSubscriptionStatus() }]
+                  "✅ DEBUG: Step 3 - SUCCESS",
+                  "Backend verified the purchase!\n\nYour premium subscription is now active!"
                 );
                 await finishTransaction(purchaseData);
+                await checkSubscriptionStatus();
+              } else {
+                console.error("❌ [Premium] Purchase verification failed");
+                // DEBUG: Show verification failed
+                Alert.alert(
+                  "❌ DEBUG: Step 3 - FAILED",
+                  "Backend returned verification=false\n\nYour purchase was made but verification failed. Your subscription will be restored on next app restart."
+                );
               }
             } catch (error) {
-              console.error("Error processing purchase:", error);
+              console.error("❌ [Premium] Error processing purchase:", error);
+              const errorMsg =
+                (error as any).response?.data?.message ||
+                (error as any).message ||
+                "Unknown error";
+              const statusCode = (error as any).response?.status;
+
+              console.error("❌ [Premium] Error details:", {
+                message: errorMsg,
+                statusCode: statusCode,
+                fullError: error,
+              });
+
+              // DEBUG: Show detailed error
               Alert.alert(
-                "Error",
-                "Failed to verify purchase. Please contact support."
+                "❌ DEBUG: Step 3 - ERROR",
+                `Backend verification threw error:\n\nStatus: ${
+                  statusCode || "No status"
+                }\nMessage: ${errorMsg}\n\nIf you were charged, your subscription will be restored on next app restart or use "Restore Purchase".`
               );
             } finally {
               setIsPurchasing(false);
             }
           },
           (error) => {
-            console.error("Purchase error:", error);
+            console.error("❌ [Premium] Purchase error received:", {
+              message: error.message,
+              code: (error as any).code,
+              fullError: error,
+            });
             setIsPurchasing(false);
 
             if ((error as any).code !== "E_USER_CANCELLED") {
@@ -104,22 +181,34 @@ const Premium = () => {
                 "Purchase Error",
                 error.message || "Failed to complete purchase"
               );
+            } else {
+              console.log("ℹ️ [Premium] User cancelled purchase");
             }
           }
         );
+        console.log("✅ [Premium] Purchase listeners set up");
 
         // Handle any pending purchases
+        console.log("🔵 [Premium] Handling pending purchases...");
         await handlePendingPurchases();
+        console.log("✅ [Premium] Pending purchases handled");
 
         // Check subscription status
+        console.log("🔵 [Premium] Checking subscription status...");
         await checkSubscriptionStatus();
+        console.log("✅ [Premium] Subscription status checked");
 
         // Load products
+        console.log("🔵 [Premium] Loading products...");
         await loadProducts();
+        console.log("✅ [Premium] Products loaded");
       } catch (error) {
-        console.error("Error initializing:", error);
+        console.error("❌ [Premium] Error initializing:", error);
         Alert.alert("Error", "Failed to initialize payment system");
       } finally {
+        console.log(
+          "🔵 [Premium] Initialization complete, setting loading to false"
+        );
         setIsLoading(false);
       }
     };
@@ -127,6 +216,7 @@ const Premium = () => {
     initialize();
 
     return () => {
+      console.log("🔵 [Premium] Cleanup - removing listeners and ending IAP");
       if (removeListener) {
         removeListener();
       }
@@ -135,31 +225,53 @@ const Premium = () => {
   }, []);
 
   const loadProducts = async () => {
+    console.log("🔵 [Premium] loadProducts called");
     try {
       const availableProducts = await getSubscriptions();
+      console.log(
+        "✅ [Premium] Products loaded:",
+        JSON.stringify(availableProducts, null, 2)
+      );
       setProducts(availableProducts);
     } catch (error) {
-      console.error("Error loading products:", error);
+      console.error("❌ [Premium] Error loading products:", error);
     }
   };
 
   const checkSubscriptionStatus = async () => {
+    console.log("🔵 [Premium] checkSubscriptionStatus called");
     try {
       const status = await getSubscriptionStatus();
+      console.log(
+        "✅ [Premium] Subscription status:",
+        JSON.stringify(status, null, 2)
+      );
       setIsPremium(status.isPremium);
       setSubscriptionInfo(status);
     } catch (error) {
-      console.error("Error checking subscription status:", error);
+      console.error("❌ [Premium] Error checking subscription status:", error);
     }
   };
 
   const handlePurchase = async () => {
-    if (isPurchasing) return;
+    console.log("🔵 [Premium] handlePurchase called");
+    console.log("🔵 [Premium] isPurchasing:", isPurchasing);
+    console.log("🔵 [Premium] products:", JSON.stringify(products, null, 2));
+
+    if (isPurchasing) {
+      console.warn("⚠️ [Premium] Purchase already in progress, ignoring");
+      return;
+    }
 
     setIsPurchasing(true);
 
     try {
       const productId = products[0]?.productId || "rant_premium_monthly";
+      console.log("🔵 [Premium] Product ID to purchase:", productId);
+      console.log(
+        "🔵 [Premium] Product price:",
+        products[0]?.localizedPrice || "₹99"
+      );
 
       Alert.alert(
         "Confirm Purchase",
@@ -170,43 +282,77 @@ const Premium = () => {
           {
             text: "Cancel",
             style: "cancel",
-            onPress: () => setIsPurchasing(false),
+            onPress: () => {
+              console.log("ℹ️ [Premium] User cancelled purchase confirmation");
+              setIsPurchasing(false);
+            },
           },
           {
             text: "Subscribe",
             onPress: async () => {
+              console.log(
+                "🔵 [Premium] User confirmed purchase, initiating..."
+              );
               try {
+                console.log("🔵 [Premium] Calling purchaseSubscription...");
                 const purchase = await purchaseSubscription(productId);
+                console.log(
+                  "🔵 [Premium] purchaseSubscription returned:",
+                  JSON.stringify(purchase, null, 2)
+                );
 
                 if (!purchase) {
+                  console.warn(
+                    "⚠️ [Premium] Purchase returned null (likely user cancelled)"
+                  );
                   setIsPurchasing(false);
                   return;
                 }
 
+                console.log(
+                  "✅ [Premium] Purchase initiated successfully, waiting for listener callback"
+                );
                 // Purchase listener will handle verification
               } catch (error) {
-                console.error("Purchase error:", error);
+                console.error("❌ [Premium] Purchase error:", {
+                  message: (error as any).message,
+                  code: (error as any).code,
+                  fullError: error,
+                });
                 setIsPurchasing(false);
-                Alert.alert("Error", "Failed to initiate purchase");
+                Alert.alert(
+                  "Error",
+                  `Failed to initiate purchase: ${
+                    (error as any).message || "Unknown error"
+                  }`
+                );
               }
             },
           },
         ]
       );
     } catch (error) {
-      console.error("Error:", error);
+      console.error("❌ [Premium] Error in handlePurchase:", error);
       setIsPurchasing(false);
       Alert.alert("Error", "Something went wrong");
     }
   };
 
   const handleRestore = async () => {
-    if (isRestoring) return;
+    console.log("🔵 [Premium] handleRestore called");
+    console.log("🔵 [Premium] isRestoring:", isRestoring);
+
+    if (isRestoring) {
+      console.warn("⚠️ [Premium] Restore already in progress, ignoring");
+      return;
+    }
 
     setIsRestoring(true);
 
     try {
+      console.log("🔵 [Premium] Calling restorePurchasesUtil...");
       const restored = await restorePurchasesUtil();
+      console.log("🔵 [Premium] Restore result:", restored);
 
       if (restored) {
         await checkSubscriptionStatus();
@@ -215,7 +361,7 @@ const Premium = () => {
         Alert.alert("No Purchases", "No previous purchases found to restore.");
       }
     } catch (error) {
-      console.error("Restore error:", error);
+      console.error("❌ [Premium] Restore error:", error);
       Alert.alert("Error", "Failed to restore purchases");
     } finally {
       setIsRestoring(false);
@@ -285,12 +431,12 @@ const Premium = () => {
                         ⚠️ In-App Purchases not available
                       </Text>
                       <Text style={styles.warningSubtext}>
-                        Please use a real device with Google Play Store to make purchases. 
-                        IAP is not supported on emulators.
+                        Please use a real device with Google Play Store to make
+                        purchases. IAP is not supported on emulators.
                       </Text>
                     </View>
                   )}
-                  
+
                   <TouchableOpacity
                     style={[
                       styles.subscribeButton,
@@ -328,7 +474,12 @@ const Premium = () => {
                     {isRestoring ? (
                       <ActivityIndicator color="#b794f6" size="small" />
                     ) : (
-                      <Text style={[styles.restoreButtonText, !iapAvailable && styles.disabledText]}>
+                      <Text
+                        style={[
+                          styles.restoreButtonText,
+                          !iapAvailable && styles.disabledText,
+                        ]}
+                      >
                         Restore Purchases
                       </Text>
                     )}

@@ -28,6 +28,7 @@ const userSchema = new mongoose.Schema(
       default: null,
     }, // Platform where subscription was purchased
     subscriptionProductId: { type: String }, // Product ID from store
+    pushToken: { type: String, default: null }, // Expo push notification token
   },
   { timestamps: true }
 );

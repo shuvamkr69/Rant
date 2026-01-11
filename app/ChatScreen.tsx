@@ -469,7 +469,7 @@ export default function ChatScreen() {
           </TouchableOpacity>
 
           {/* Word Count for Users */}
-          {wordCountStatus && (
+          {wordCountStatus && wordCountStatus.wordLimit !== -1 && (
             <Text
               style={[
                 styles.wordCount,
@@ -482,6 +482,18 @@ export default function ChatScreen() {
               ]}
             >
               Words: {wordCountStatus.wordsRemaining.toLocaleString()} left
+            </Text>
+          )}
+
+          {/* Premium Unlimited Badge */}
+          {wordCountStatus && wordCountStatus.wordLimit === -1 && (
+            <Text
+              style={[
+                styles.wordCount,
+                { color: "#FFD700" }, // Gold color for premium
+              ]}
+            >
+              ✨ Unlimited Words
             </Text>
           )}
 
@@ -592,9 +604,11 @@ export default function ChatScreen() {
             </View>
           )}
 
-        {/* Word Limit Exhausted Banner */}
+        {/* Word Limit Exhausted Banner - only show if not premium */}
         {(otherUserWordLimitExhausted ||
-          (wordCountStatus && wordCountStatus.wordsRemaining <= 0)) && (
+          (wordCountStatus &&
+            wordCountStatus.wordsRemaining <= 0 &&
+            wordCountStatus.wordLimit !== -1)) && (
           <View style={styles.limitBanner}>
             <Ionicons
               name="alert-circle"
@@ -606,7 +620,9 @@ export default function ChatScreen() {
               style={[styles.limitBannerText, { color: "#fff" }]}
               numberOfLines={1}
             >
-              {wordCountStatus && wordCountStatus.wordsRemaining <= 0
+              {wordCountStatus &&
+              wordCountStatus.wordsRemaining <= 0 &&
+              wordCountStatus.wordLimit !== -1
                 ? "You have no messages left this month"
                 : `${name} has no messages left this month`}
             </Text>
@@ -625,13 +641,17 @@ export default function ChatScreen() {
               {
                 backgroundColor:
                   otherUserWordLimitExhausted ||
-                  (wordCountStatus && wordCountStatus.wordsRemaining <= 0) ||
+                  (wordCountStatus &&
+                    wordCountStatus.wordsRemaining <= 0 &&
+                    wordCountStatus.wordLimit !== -1) ||
                   waitingForOtherUser
                     ? "#1a1a1a"
                     : "#222",
                 color:
                   otherUserWordLimitExhausted ||
-                  (wordCountStatus && wordCountStatus.wordsRemaining <= 0) ||
+                  (wordCountStatus &&
+                    wordCountStatus.wordsRemaining <= 0 &&
+                    wordCountStatus.wordLimit !== -1) ||
                   waitingForOtherUser
                     ? "#666"
                     : colors.text,
@@ -643,13 +663,17 @@ export default function ChatScreen() {
                 : waitingForOtherUser
                 ? `Waiting for ${name} to join...`
                 : otherUserWordLimitExhausted ||
-                  (wordCountStatus && wordCountStatus.wordsRemaining <= 0)
+                  (wordCountStatus &&
+                    wordCountStatus.wordsRemaining <= 0 &&
+                    wordCountStatus.wordLimit !== -1)
                 ? "Messages disabled - word limit reached"
                 : "Type a message..."
             }
             placeholderTextColor={
               otherUserWordLimitExhausted ||
-              (wordCountStatus && wordCountStatus.wordsRemaining <= 0) ||
+              (wordCountStatus &&
+                wordCountStatus.wordsRemaining <= 0 &&
+                wordCountStatus.wordLimit !== -1) ||
               waitingForOtherUser
                 ? "#555"
                 : colors.icon
@@ -661,7 +685,11 @@ export default function ChatScreen() {
             editable={
               !isPending &&
               !otherUserWordLimitExhausted &&
-              !(wordCountStatus && wordCountStatus.wordsRemaining <= 0) &&
+              !(
+                wordCountStatus &&
+                wordCountStatus.wordsRemaining <= 0 &&
+                wordCountStatus.wordLimit !== -1
+              ) &&
               !waitingForOtherUser
             }
           />
@@ -672,7 +700,9 @@ export default function ChatScreen() {
                 backgroundColor:
                   isPending ||
                   otherUserWordLimitExhausted ||
-                  (wordCountStatus && wordCountStatus.wordsRemaining <= 0) ||
+                  (wordCountStatus &&
+                    wordCountStatus.wordsRemaining <= 0 &&
+                    wordCountStatus.wordLimit !== -1) ||
                   waitingForOtherUser
                     ? "#ccc"
                     : "#6b1fa8",
@@ -683,7 +713,9 @@ export default function ChatScreen() {
               isPending ||
               !inputMessage.trim() ||
               otherUserWordLimitExhausted ||
-              (wordCountStatus?.wordsRemaining ?? 1) <= 0 ||
+              (wordCountStatus &&
+                wordCountStatus.wordsRemaining <= 0 &&
+                wordCountStatus.wordLimit !== -1) ||
               waitingForOtherUser
             }
           >
