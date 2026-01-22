@@ -397,9 +397,9 @@ const Premium = () => {
               <Text style={styles.planName}>Rant+</Text>
               <Text style={styles.planDuration}>Premium Membership</Text>
               <View style={styles.priceContainer}>
-                <Text style={styles.currency}>
+                {/* <Text style={styles.currency}>
                   {products[0]?.currency === "INR" ? "₹" : "$"}
-                </Text>
+                </Text> */}
                 <Text style={styles.price}>{products[0]?.price || "99"}</Text>
                 <Text style={styles.priceSubtext}>/month</Text>
               </View>
