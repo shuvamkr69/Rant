@@ -1,5 +1,5 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { io, Socket } from "socket.io-client";
+import { getAccessToken } from "./tokenStorage";
 
 const SOCKET_URL = process.env.EXPO_PUBLIC_BACKEND_URL || "http://localhost:5000";
 
@@ -7,7 +7,7 @@ let socket: Socket | null = null;
 
 export const initializeSocket = async () => {
   try {
-    const token = await AsyncStorage.getItem("accessToken");
+    const token = getAccessToken();
     
     if (!token) {
       console.error("❌ No access token found");

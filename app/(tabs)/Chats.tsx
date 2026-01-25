@@ -39,7 +39,7 @@ const Chats = () => {
       return () => {
         isFocusedRef.current = false;
       };
-    }, [])
+    }, []),
   );
 
   const handleChatPress = (match: any) => {
@@ -107,7 +107,7 @@ const Chats = () => {
         <View style={styles.chatsContainer}>
           <View style={styles.cardsContainer}>
             <Text style={[styles.headingText, { color: colors.text }]}>
-              Chats
+              Chats2
             </Text>
 
             {matches.length === 0 ? (

@@ -1,5 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import axios from "axios";
 import { createContext, useContext, useEffect, useState } from "react";
+import { APP_EVENTS, appEvents } from "../utils/eventEmitter";
 import {
   registerForPushNotificationsAsync,
   removePushTokenFromBackend,
@@ -9,7 +11,10 @@ import {
 import {
   clearAllTokens,
   getAccessToken,
+  getRefreshToken,
   initializeAccessToken,
+  setAccessToken,
+  setRefreshToken,
 } from "../utils/tokenStorage";
 
 type AuthContextType = {
@@ -37,14 +42,74 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         await initializeAccessToken();
 
         const storedState = await AsyncStorage.getItem("isSignedIn");
-        const accessToken = getAccessToken();
+        let accessToken = getAccessToken();
+        const refreshToken = await getRefreshToken();
         const premiumStatus = await AsyncStorage.getItem("isPremium");
 
-        console.log("Stored state:", storedState);
-        console.log("Access Token:", accessToken ? "present" : "null");
-        console.log("Premium Status:", premiumStatus);
+        console.log("🔍 [Auth] Checking auth status on app start...");
+        console.log("🔍 [Auth] Stored state:", storedState);
+        console.log(
+          "🔍 [Auth] Access Token:",
+          accessToken ? "present" : "null"
+        );
+        console.log(
+          "🔍 [Auth] Refresh Token:",
+          refreshToken ? "present" : "null"
+        );
+        console.log("🔍 [Auth] Premium Status:", premiumStatus);
+
+        // If user should be signed in but no access token in memory
+        if (storedState === "true" && !accessToken && refreshToken) {
+          console.log(
+            "🔄 [Auth] No access token in memory, but refresh token exists. Refreshing..."
+          );
+
+          try {
+            // Use refresh token to get new access token
+            const backend_url = process.env.EXPO_PUBLIC_BACKEND_URL;
+            const response = await axios.post(
+              `${backend_url}/api/v1/users/refresh-token`,
+              { refreshToken }
+            );
+
+            const {
+              accessToken: newAccessToken,
+              refreshToken: newRefreshToken,
+            } = response.data;
+
+            if (newAccessToken) {
+              console.log(
+                "✅ [Auth] Successfully refreshed access token on app start"
+              );
+              await setAccessToken(newAccessToken);
+              if (newRefreshToken) {
+                await setRefreshToken(newRefreshToken);
+              }
+              accessToken = newAccessToken;
+            } else {
+              console.error("❌ [Auth] No access token in refresh response");
+              throw new Error("No access token in refresh response");
+            }
+          } catch (refreshError: any) {
+            console.error(
+              "❌ [Auth] Failed to refresh token on app start:",
+              refreshError
+            );
+            console.log("🚪 [Auth] Clearing auth state and forcing logout");
+
+            // Clear all auth data
+            await clearAllTokens();
+            await AsyncStorage.removeItem("isSignedIn");
+            await AsyncStorage.removeItem("isPremium");
+            setIsSignedIn(false);
+            setIsPremium(false);
+            setIsLoading(false);
+            return;
+          }
+        }
 
         if (storedState === "true" && accessToken) {
+          console.log("✅ [Auth] User is authenticated");
           setIsSignedIn(true);
           setIsPremium(premiumStatus === "true");
 
@@ -58,6 +123,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             .catch((error) => {
               console.error("Failed to register push token:", error);
             });
+        } else {
+          console.log("ℹ️ [Auth] User is not authenticated");
         }
       } catch (error) {
         console.error("Error checking auth status:", error);
@@ -71,26 +138,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const cleanup = setupNotificationListeners();
 
     // Listen for forced logout events from API interceptor
-    const handleForceLogout = (event: any) => {
-      console.log("🔔 [Auth] Received force logout event:", event.detail);
+    const handleForceLogout = (data: any) => {
+      console.log("🔔 [Auth] Received force logout event:", data);
       signOut();
     };
 
-    if (typeof window !== "undefined") {
-      window.addEventListener(
-        "forceLogout",
-        handleForceLogout as EventListener
-      );
-    }
+    appEvents.on(APP_EVENTS.FORCE_LOGOUT, handleForceLogout);
 
     return () => {
       cleanup();
-      if (typeof window !== "undefined") {
-        window.removeEventListener(
-          "forceLogout",
-          handleForceLogout as EventListener
-        );
-      }
+      appEvents.off(APP_EVENTS.FORCE_LOGOUT, handleForceLogout);
     };
   }, []);
 

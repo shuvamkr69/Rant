@@ -2,24 +2,45 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
 
 const REFRESH_TOKEN_KEY = "refreshToken";
-const ACCESS_TOKEN_KEY = "accessToken"; // For fallback only
+const ACCESS_TOKEN_KEY = "accessToken"; // Now used for persistence
 
-// In-memory storage for access token
+// In-memory storage for access token (for fast synchronous access)
 let accessToken: string | null = null;
 
-// Access Token Management (In-Memory)
-export const setAccessToken = (token: string | null) => {
+// Access Token Management (In-Memory + AsyncStorage for persistence)
+export const setAccessToken = async (token: string | null) => {
   accessToken = token;
-  console.log("🔑 Access token stored in memory");
+  if (token) {
+    try {
+      await AsyncStorage.setItem(ACCESS_TOKEN_KEY, token);
+      console.log("🔑 Access token stored in memory and AsyncStorage");
+    } catch (error) {
+      console.error("❌ Error storing access token to AsyncStorage:", error);
+      console.log("🔑 Access token stored in memory only");
+    }
+  } else {
+    try {
+      await AsyncStorage.removeItem(ACCESS_TOKEN_KEY);
+      console.log("🧹 Access token cleared from memory and AsyncStorage");
+    } catch (error) {
+      console.error("❌ Error removing access token from AsyncStorage:", error);
+    }
+  }
 };
 
 export const getAccessToken = (): string | null => {
   return accessToken;
 };
 
-export const clearAccessToken = () => {
+export const clearAccessToken = async () => {
   accessToken = null;
-  console.log("🧹 Access token cleared from memory");
+  try {
+    await AsyncStorage.removeItem(ACCESS_TOKEN_KEY);
+    console.log("🧹 Access token cleared from memory and AsyncStorage");
+  } catch (error) {
+    console.error("❌ Error clearing access token from AsyncStorage:", error);
+    console.log("🧹 Access token cleared from memory");
+  }
 };
 
 // Refresh Token Management (Secure Storage)
@@ -59,22 +80,18 @@ export const clearRefreshToken = async (): Promise<void> => {
 
 // Clear all tokens
 export const clearAllTokens = async (): Promise<void> => {
-  clearAccessToken();
+  await clearAccessToken();
   await clearRefreshToken();
-  // Also clear from AsyncStorage (legacy)
-  await AsyncStorage.removeItem(ACCESS_TOKEN_KEY);
   console.log("🧹 All tokens cleared");
 };
 
-// Initialize access token from AsyncStorage on app start (one-time migration)
+// Initialize access token from AsyncStorage on app start
 export const initializeAccessToken = async (): Promise<void> => {
   try {
     const token = await AsyncStorage.getItem(ACCESS_TOKEN_KEY);
     if (token) {
-      setAccessToken(token);
-      // Remove from AsyncStorage after migration
-      await AsyncStorage.removeItem(ACCESS_TOKEN_KEY);
-      console.log("✅ Access token migrated from AsyncStorage to memory");
+      accessToken = token; // Set in memory
+      console.log("✅ Access token loaded from AsyncStorage to memory");
     }
   } catch (error) {
     console.error("❌ Error initializing access token:", error);

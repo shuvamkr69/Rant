@@ -1,10 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { APP_EVENTS, appEvents } from "./eventEmitter";
 import {
-    clearAllTokens,
-    getAccessToken,
-    getRefreshToken,
-    setAccessToken,
+  clearAllTokens,
+  getAccessToken,
+  getRefreshToken,
+  setAccessToken,
 } from "./tokenStorage";
 
 const backend_url = process.env.EXPO_PUBLIC_BACKEND_URL;
@@ -147,7 +148,7 @@ api.interceptors.response.use(
         console.log("✅ [Token Refresh] New tokens received");
 
         // Update tokens in storage
-        setAccessToken(newAccessToken);
+        await setAccessToken(newAccessToken);
         if (newRefreshToken) {
           const { setRefreshToken } = await import("./tokenStorage");
           await setRefreshToken(newRefreshToken);
@@ -186,14 +187,10 @@ api.interceptors.response.use(
           await AsyncStorage.removeItem("isSignedIn");
           await AsyncStorage.removeItem("isPremium");
 
-          // Notify the app to redirect to login
-          // We'll emit a custom event that the auth context can listen to
-          const logoutEvent = new CustomEvent("forceLogout", {
-            detail: { reason: "token_refresh_failed" },
+          // Notify the app to redirect to login using React Native event emitter
+          appEvents.emit(APP_EVENTS.FORCE_LOGOUT, {
+            reason: "token_refresh_failed",
           });
-          if (typeof window !== "undefined") {
-            window.dispatchEvent(logoutEvent);
-          }
 
           console.log("✅ [Token Refresh] Forced logout complete");
         }

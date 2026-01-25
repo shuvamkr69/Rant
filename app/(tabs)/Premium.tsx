@@ -14,8 +14,8 @@ import {
   SubscriptionProduct,
   verifyPurchaseWithBackend,
 } from "@/components/utils/iap";
+import { getAccessToken } from "@/components/utils/tokenStorage";
 import { Colors } from "@/constants/theme";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useState } from "react";
 import {
@@ -50,7 +50,7 @@ const Premium = () => {
       console.log("🔵 [Premium] Starting initialization...");
       try {
         // DEBUG: Check auth status
-        const token = await AsyncStorage.getItem("accessToken");
+        const token = getAccessToken();
         const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
         console.log("🔵 [Premium] Auth token exists:", !!token);
         console.log("🔵 [Premium] Backend URL:", backendUrl);

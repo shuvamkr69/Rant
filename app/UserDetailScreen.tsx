@@ -158,7 +158,7 @@ const UserDetailScreen = () => {
         const { accessToken, refreshToken } = response.data;
 
         // Store tokens in memory and secure storage
-        setAccessToken(accessToken);
+        await setAccessToken(accessToken);
         await setRefreshToken(refreshToken);
 
         await signIn();

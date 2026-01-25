@@ -1,5 +1,5 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { getAccessToken } from "../utils/tokenStorage";
 
 type Message = {
   _id: string;
@@ -85,7 +85,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
 
   const initSocket = async () => {
     try {
-      const token = await AsyncStorage.getItem("accessToken");
+      const token = getAccessToken();
       console.log(
         "🔌 Initializing socket with token:",
         token ? token.substring(0, 20) + "..." : "none"
@@ -151,17 +151,25 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
           sessionId?: string;
           sessionStartTime?: string;
           waitingForOtherUser?: boolean;
+          bothUsersPresent?: boolean;
         }) => {
-          console.log("🚪 Room joined, session data:", data);
+          console.log("🚪 Room joined, session data:", JSON.stringify(data));
+          console.log("🔍 bothUsersPresent:", data.bothUsersPresent);
+          console.log("⏳ waitingForOtherUser:", data.waitingForOtherUser);
+
           if (data.sessionId) {
             setCurrentSessionId(data.sessionId);
           }
           if (data.sessionStartTime) {
             setSessionStartTime(new Date(data.sessionStartTime));
             setWaitingForOtherUser(false);
+            console.log(
+              "✅ Session start time set, waitingForOtherUser = false"
+            );
           } else if (data.waitingForOtherUser) {
             setWaitingForOtherUser(true);
             setSessionStartTime(null);
+            console.log("⏳ Waiting for other user...");
           }
         }
       );

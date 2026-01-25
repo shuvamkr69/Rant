@@ -61,6 +61,14 @@ export default function ChatScreen() {
     string | null
   >(null);
 
+  // Log component mount and socket status
+  useEffect(() => {
+    console.log("🎬 ChatScreen MOUNTED for other user:", userId);
+    console.log("🔌 Socket available:", !!socket);
+    console.log("🆔 Socket ID:", socket?.id || "no socket");
+    console.log("🔗 Socket connected:", socket?.connected || false);
+  }, []);
+
   // Check if session is active (both users present and session has started)
   const isSessionActive =
     sessionStartTime && !waitingForOtherUser && !isPending;
@@ -97,7 +105,7 @@ export default function ChatScreen() {
           "Rating Submitted",
           "Thank you for rating your session!",
           [{ text: "OK", style: "default" }],
-          { icon: "checkmark-circle", iconColor: "#4CAF50" }
+          { icon: "checkmark-circle", iconColor: "#4CAF50" },
         );
         setShowRatingModal(false);
         resetRatingState();
@@ -148,7 +156,7 @@ export default function ChatScreen() {
       const message =
         elapsedTime < 37
           ? `Your active session will end.\n\nNote: Sessions must be 30 minutes or longer to count towards your stats. This session has been running for ${formatTime(
-              elapsedTime
+              elapsedTime,
             )}.`
           : "Your active session will end.";
 
@@ -173,7 +181,7 @@ export default function ChatScreen() {
             },
           },
         ],
-        { icon: "exit-outline", iconColor: "#ff5252", cancelable: true }
+        { icon: "exit-outline", iconColor: "#ff5252", cancelable: true },
       );
       return true; // Prevent default back action
     }
@@ -187,7 +195,7 @@ export default function ChatScreen() {
     const interval = setInterval(() => {
       const now = new Date();
       const elapsed = Math.floor(
-        (now.getTime() - new Date(sessionStartTime).getTime()) / 1000
+        (now.getTime() - new Date(sessionStartTime).getTime()) / 1000,
       );
       setElapsedTime(elapsed);
     }, 1000);
@@ -229,15 +237,26 @@ export default function ChatScreen() {
   };
 
   useEffect(() => {
+    console.log("🔄 join_room useEffect triggered");
+    console.log("   userId:", userId);
+    console.log("   socket exists:", !!socket);
+    console.log("   socket.connected:", socket?.connected);
+
     if (userId && socket) {
       loadChatHistory(userId as string);
 
       // Join the room for session tracking
-      console.log(`🚪 Joining room with user ${userId}`);
+      console.log(`🚪 EMITTING join_room with otherUserId: ${userId}`);
+      console.log(`   Socket ID: ${socket.id}`);
       socket.emit("join_room", { otherUserId: userId });
 
       // Listen for room_joined confirmation
-      socket.once("room_joined", (data: any) => {});
+      socket.once("room_joined", (data: any) => {
+        console.log("🚪 Room joined, session data:", JSON.stringify(data));
+        console.log("👥 Both users present:", data.bothUsersPresent);
+        console.log("⏳ Waiting for other user:", data.waitingForOtherUser);
+        console.log("🆔 Session ID:", data.sessionId);
+      });
 
       // Listen for other user's word limit exhausted (for Listeners)
       const handleOtherUserLimitExhausted = (data: any) => {
@@ -247,7 +266,7 @@ export default function ChatScreen() {
 
       socket.on(
         "other_user_word_limit_exhausted",
-        handleOtherUserLimitExhausted
+        handleOtherUserLimitExhausted,
       );
 
       // Listen for session ended by other user
@@ -266,7 +285,7 @@ export default function ChatScreen() {
               onPress: () => router.back(),
             },
           ],
-          { icon: "information-circle", iconColor: "#6b1fa8" }
+          { icon: "information-circle", iconColor: "#6b1fa8" },
         );
       };
 
@@ -277,7 +296,7 @@ export default function ChatScreen() {
         socket.emit("leave_room", { otherUserId: userId });
         socket.off(
           "other_user_word_limit_exhausted",
-          handleOtherUserLimitExhausted
+          handleOtherUserLimitExhausted,
         );
         socket.off("session_ended_by_other", handleSessionEndedByOther);
       };
@@ -297,7 +316,7 @@ export default function ChatScreen() {
       "hardwareBackPress",
       () => {
         return handleExitSession();
-      }
+      },
     );
 
     return () => backHandler.remove();
@@ -313,7 +332,7 @@ export default function ChatScreen() {
             "Session Active",
             "You have an active session. Minimizing the app may end your session.",
             [{ text: "OK", style: "default" }],
-            { icon: "warning", iconColor: "#ff9800" }
+            { icon: "warning", iconColor: "#ff9800" },
           );
         }
       }
@@ -661,13 +680,13 @@ export default function ChatScreen() {
               isPending
                 ? "Chat is pending..."
                 : waitingForOtherUser
-                ? `Waiting for ${name} to join...`
-                : otherUserWordLimitExhausted ||
-                  (wordCountStatus &&
-                    wordCountStatus.wordsRemaining <= 0 &&
-                    wordCountStatus.wordLimit !== -1)
-                ? "Messages disabled - word limit reached"
-                : "Type a message..."
+                  ? `Waiting for ${name} to join...`
+                  : otherUserWordLimitExhausted ||
+                      (wordCountStatus &&
+                        wordCountStatus.wordsRemaining <= 0 &&
+                        wordCountStatus.wordLimit !== -1)
+                    ? "Messages disabled - word limit reached"
+                    : "Type a message..."
             }
             placeholderTextColor={
               otherUserWordLimitExhausted ||

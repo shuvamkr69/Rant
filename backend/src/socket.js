@@ -92,6 +92,11 @@ export const initializeSocket = (server) => {
         socket.join(roomId);
 
         console.log(`✅ User ${currentUserId} joined room ${roomId}`);
+        console.log(
+          `👤 Other user ${otherUserId} is ${
+            userSockets.has(otherUserId.toString()) ? "ONLINE" : "OFFLINE"
+          }`
+        );
 
         // Check if there's already an active session for this room
         let sessionData = activeSessions.get(roomId);
@@ -130,6 +135,17 @@ export const initializeSocket = (server) => {
         } else {
           // Add current user to participants
           sessionData.participants.add(currentUserId.toString());
+          console.log(`👤 Adding user ${currentUserId} to room ${roomId}`);
+          console.log(
+            `👥 Current participants:`,
+            Array.from(sessionData.participants)
+          );
+          console.log(
+            `📊 Participants count: ${sessionData.participants.size}`
+          );
+          console.log(
+            `🔍 Both users present flag: ${sessionData.bothUsersPresent}`
+          );
 
           // Check if both users are now present
           if (
@@ -153,14 +169,20 @@ export const initializeSocket = (server) => {
 
             sessionData.sessionId = session._id;
             console.log(
-              `� BOTH USERS PRESENT! Session ${session._id} started for room ${roomId}`
+              `🎉 BOTH USERS PRESENT! Session ${session._id} started for room ${roomId}`
+            );
+            console.log(
+              `👥 Both participants:`,
+              Array.from(sessionData.participants)
             );
 
             // Notify both users that session has started
+            console.log(`📢 Emitting session_started to room ${roomId}`);
             io.to(roomId).emit("session_started", {
               sessionId: session._id,
               sessionStartTime: sessionData.startTime,
             });
+            console.log(`✅ session_started event emitted`);
           } else if (sessionData.isPaused && sessionData.bothUsersPresent) {
             // Resume session if it was paused (both users were present before)
             const now = new Date();
@@ -194,14 +216,29 @@ export const initializeSocket = (server) => {
           );
         }
 
-        // Send room_joined confirmation with session status
+        // Send room_joined confirmation with session status (AFTER checking for both users)
+        const finalSessionData = activeSessions.get(roomId);
         socket.emit("room_joined", {
           roomId,
-          sessionId: sessionData?.sessionId,
-          sessionStartTime: sessionData?.startTime,
-          bothUsersPresent: sessionData?.bothUsersPresent || false,
-          waitingForOtherUser: !sessionData?.bothUsersPresent,
+          sessionId: finalSessionData?.sessionId,
+          sessionStartTime: finalSessionData?.startTime,
+          bothUsersPresent: finalSessionData?.bothUsersPresent || false,
+          waitingForOtherUser: !finalSessionData?.bothUsersPresent,
+          participants: finalSessionData?.participants
+            ? Array.from(finalSessionData.participants)
+            : [],
+          debug: {
+            currentUserId: currentUserId.toString(),
+            otherUserId: otherUserId.toString(),
+            participantsCount: finalSessionData?.participants?.size || 0,
+          },
         });
+
+        console.log(
+          `📤 Sent room_joined to ${currentUserId}: bothUsersPresent=${
+            finalSessionData?.bothUsersPresent
+          }, waitingForOtherUser=${!finalSessionData?.bothUsersPresent}`
+        );
 
         // Check if the other user is a regular User and has exhausted their word limit
         if (otherUser.userType === "User") {
