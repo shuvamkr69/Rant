@@ -1,8 +1,13 @@
 import { useChat } from "@/components/contexts/chatContext";
 import { useTheme } from "@/components/contexts/ThemeContext";
-import TopBar from "@/components/resuables/TopBar";
 import { ChatsScreenSkeleton } from "@/components/skeletons";
+import {
+  CACHE_EXPIRY,
+  CACHE_KEYS,
+  getFromCache,
+} from "@/components/utils/cacheStorage";
 import { Colors } from "@/constants/theme";
+import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -29,13 +34,41 @@ const Chats = () => {
   // Map of animated values per match id
   const animatedMapRef = useRef(new Map());
 
-  const TOPBAR_COLOR = "#6b1fa8"; // keep same accent as TopBar
+  const TOPBAR_COLOR = "#000000"; // Pure black to match TopBar
 
   useFocusEffect(
     useCallback(() => {
       isFocusedRef.current = true;
-      setIsLoading(true);
-      loadMatches().finally(() => setIsLoading(false));
+
+      const loadData = async () => {
+        // Check if we have cached data
+        const cachedMatches = await getFromCache<any[]>(
+          CACHE_KEYS.MATCHES,
+          CACHE_EXPIRY.MATCHES,
+        );
+
+        // Only show loading skeleton if no cache exists
+        if (!cachedMatches) {
+          setIsLoading(true);
+        } else {
+          setIsLoading(false);
+        }
+
+        // Load matches (will use cache if available)
+        await loadMatches();
+
+        // If no matches after loading, show skeleton for 1 second then show empty state
+        if (matches.length === 0) {
+          setTimeout(() => {
+            setIsLoading(false);
+          }, 1000);
+        } else {
+          setIsLoading(false);
+        }
+      };
+
+      loadData();
+
       return () => {
         isFocusedRef.current = false;
       };
@@ -99,28 +132,32 @@ const Chats = () => {
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background }]}
+      edges={[]}
     >
-      <TopBar />
       {isLoading ? (
         <ChatsScreenSkeleton />
       ) : (
         <View style={styles.chatsContainer}>
           <View style={styles.cardsContainer}>
             <Text style={[styles.headingText, { color: colors.text }]}>
-              Chats2
+              Chats
             </Text>
 
             {matches.length === 0 ? (
               <View style={styles.emptyContainer}>
-                <Image
-                  source={require("../../assets/images/icons/404.png")}
-                  style={styles.emptyIcon}
-                  resizeMode="contain"
-                />
-                <Text style={[styles.emptyText, { color: colors.icon }]}>
-                  No listeners matched yet. Explore and connect with listeners
-                  to start ranting!
-                </Text>
+                <View style={styles.emptyHeader}>
+                  <Ionicons
+                    name="chatbubbles-outline"
+                    size={64}
+                    color="#a566daff"
+                  />
+                  <Text style={[styles.emptyText, { color: colors.text }]}>
+                    No listeners matched yet
+                  </Text>
+                  <Text style={[styles.emptySubtext, { color: colors.icon }]}>
+                    Explore and connect with listeners to start ranting!
+                  </Text>
+                </View>
               </View>
             ) : (
               <FlatList
@@ -235,17 +272,34 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 40,
+    paddingHorizontal: 20,
+    bottom: "10%",
   },
   emptyIcon: {
-    width: 150,
-    height: 150,
+    width: "60%",
+    maxWidth: 200,
+    aspectRatio: 1,
     marginBottom: 20,
     opacity: 0.7,
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: 20,
+    fontWeight: "600",
     textAlign: "center",
+    marginTop: 20,
+    marginBottom: 12,
+  },
+  emptySubtext: {
+    fontSize: 15,
+    textAlign: "center",
+    opacity: 0.8,
+  },
+  emptyHeader: {
+    alignItems: "center",
+  },
+  gameWrapper: {
+    alignItems: "center",
+    justifyContent: "center",
   },
   listContent: {
     paddingBottom: 20,
@@ -262,7 +316,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 15,
     marginVertical: 6,
     // nicer shadow / elevation
-    shadowColor: "#6b1fa8",
+    shadowColor: "#000000",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.08,
     shadowRadius: 12,

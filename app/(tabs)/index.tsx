@@ -1,7 +1,13 @@
 import { useTheme } from "@/components/contexts/ThemeContext";
-import TopBar from "@/components/resuables/TopBar";
 import { HomeScreenSkeleton } from "@/components/skeletons";
 import { api } from "@/components/utils/api";
+import {
+  CACHE_EXPIRY,
+  CACHE_KEYS,
+  clearCache,
+  getFromCache,
+  saveToCache,
+} from "@/components/utils/cacheStorage";
 import { Colors } from "@/constants/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -46,12 +52,31 @@ export default function HomeScreen() {
     }
   };
 
-  const fetchProfiles = async () => {
+  const fetchProfiles = async (useCache: boolean = true) => {
     try {
+      // Try to get from cache first
+      if (useCache) {
+        const cachedProfiles = await getFromCache<any[]>(
+          CACHE_KEYS.PROFILES,
+          CACHE_EXPIRY.PROFILES,
+        );
+        if (cachedProfiles) {
+          console.log("✅ Loading profiles from cache");
+          setProfiles(cachedProfiles);
+          setCurrentIndex(0);
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      // Fetch from API if no cache or cache expired
+      console.log("📡 Fetching profiles from API");
       const response = await api.get("/api/v1/users/profiles");
       if (response.status === 200) {
         setProfiles(response.data);
         setCurrentIndex(0);
+        // Save to cache
+        await saveToCache(CACHE_KEYS.PROFILES, response.data);
       }
     } catch (error) {
       console.error("❌ Error fetching profiles:", error);
@@ -62,10 +87,24 @@ export default function HomeScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      setIsLoading(true);
-      fetchCurrentUser();
-      fetchProfiles();
-    }, [])
+      // Check if we have cached data
+      const loadData = async () => {
+        const cachedProfiles = await getFromCache<any[]>(
+          CACHE_KEYS.PROFILES,
+          CACHE_EXPIRY.PROFILES,
+        );
+
+        // Only show loading skeleton if no cache exists
+        if (!cachedProfiles) {
+          setIsLoading(true);
+        }
+
+        fetchCurrentUser();
+        fetchProfiles();
+      };
+
+      loadData();
+    }, []),
   );
 
   const handleSwipeRight = async (cardIndex: number) => {
@@ -79,6 +118,8 @@ export default function HomeScreen() {
 
       if (response.status === 200) {
         setPreMatchMessage(""); // Clear message after sending
+        // Invalidate matches cache as a new match may have been created
+        await clearCache(CACHE_KEYS.MATCHES);
       }
     } catch (error) {
       console.error("❌ Error accepting profile:", error);
@@ -100,7 +141,7 @@ export default function HomeScreen() {
 
     // Find the profile index and trigger swipe right with message
     const profileIndex = profiles.findIndex(
-      (p) => p._id === selectedProfile._id
+      (p) => p._id === selectedProfile._id,
     );
     if (profileIndex !== -1) {
       await handleSwipeRight(profileIndex);
@@ -123,8 +164,8 @@ export default function HomeScreen() {
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background }]}
+      edges={[]}
     >
-      <TopBar />
       {isLoading ? (
         <HomeScreenSkeleton />
       ) : (
@@ -167,7 +208,7 @@ export default function HomeScreen() {
                       styles.card,
                       {
                         backgroundColor: colors.background,
-                        borderColor: "#6b1fa8",
+                        borderColor: "#2A2A2A",
                       },
                     ]}
                   >
@@ -252,7 +293,7 @@ export default function HomeScreen() {
                         <Ionicons
                           name="chatbubble-outline"
                           size={30}
-                          color={"#6b1fa8"}
+                          color={"#FFFFFF"}
                         />
                       </TouchableOpacity>
                     )}
@@ -280,14 +321,17 @@ export default function HomeScreen() {
             />
           ) : (
             <View style={styles.noProfilesAvailable}>
-              <Image
-                source={require("@/assets/images/icons/404.png")}
-                style={styles.notFoundGif}
-                resizeMode="contain"
-              />
-              <Text style={[styles.noProfilesText, { color: colors.text }]}>
-                No more profiles for now
-              </Text>
+              <View style={styles.noProfilesHeader}>
+                <Ionicons name="people-outline" size={64} color="#a566daff" />
+                <Text style={[styles.noProfilesText, { color: colors.text }]}>
+                  No more profiles for now
+                </Text>
+                <Text
+                  style={[styles.noProfilesSubtext, { color: colors.icon }]}
+                >
+                  Check back later for new matches!
+                </Text>
+              </View>
             </View>
           )}
         </View>
@@ -305,7 +349,7 @@ export default function HomeScreen() {
               styles.modalContent,
               {
                 backgroundColor: "#271235ff",
-                borderColor: "#6b1fa8",
+                borderColor: "#2A2A2A",
                 borderWidth: 2,
               },
             ]}
@@ -321,7 +365,7 @@ export default function HomeScreen() {
             <TextInput
               style={[
                 styles.messageInput,
-                { color: colors.text, borderColor: "#6b1fa8" },
+                { color: colors.text, borderColor: "#2A2A2A" },
               ]}
               placeholder="Type your message..."
               placeholderTextColor={colors.icon}
@@ -390,11 +434,11 @@ const styles = StyleSheet.create({
     width: SCREEN_WIDTH * 0.9,
     borderRadius: 20,
     borderWidth: 2,
-    borderColor: "#6b1fa8",
+    borderColor: "#2A2A2A",
     justifyContent: "flex-end",
     backgroundColor: "white",
     overflow: "hidden",
-    shadowColor: "#6b1fa8",
+    shadowColor: "#2A2A2A",
     shadowOffset: {
       width: 0,
       height: 8,
@@ -462,10 +506,10 @@ const styles = StyleSheet.create({
   preMessageContainer: {
     marginTop: 10,
     padding: 15,
-    backgroundColor: "rgba(107, 31, 168, 0.2)",
+    backgroundColor: "rgba(42, 42, 42, 0.2)",
     borderRadius: 10,
     borderLeftWidth: 4,
-    borderLeftColor: "#6b1fa8",
+    borderLeftColor: "#2A2A2A",
   },
   preMessageText: {
     fontSize: 16,
@@ -513,7 +557,7 @@ const styles = StyleSheet.create({
   },
   messageInput: {
     borderWidth: 1,
-    borderColor: "#6b1fa8",
+    borderColor: "#2A2A2A",
     borderRadius: 10,
     padding: 15,
     fontSize: 16,
@@ -555,17 +599,34 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   noProfilesAvailable: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    bottom: "5%", //a bit of hardcoding aint kill no one
+    paddingHorizontal: 20,
   },
   notFoundGif: {
-    width: SCREEN_WIDTH * 0.5,
-    height: SCREEN_HEIGHT * 0.3,
+    width: "60%",
+    maxWidth: 250,
+    aspectRatio: 1,
+    marginBottom: 20,
   },
   noProfilesText: {
     textAlign: "center",
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: "600",
+    marginTop: 20,
+    marginBottom: 12,
+  },
+  noProfilesSubtext: {
+    textAlign: "center",
+    fontSize: 15,
+    opacity: 0.8,
+  },
+  noProfilesHeader: {
+    alignItems: "center",
+  },
+  gameWrapper: {
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

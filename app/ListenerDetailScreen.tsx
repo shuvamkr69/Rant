@@ -223,7 +223,7 @@ const ListenerDetailScreen = () => {
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
       <LinearGradient
-        colors={["#1a0033", "#2d0a4e", "#4a1475", "#6b1fa8"]}
+        colors={["#000000", "#0A0A0A", "#1A1A1A", "#2A2A2A"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.gradient}
@@ -270,7 +270,7 @@ const ListenerDetailScreen = () => {
                   </LinearGradient>
                   <View style={styles.cameraButton}>
                     <LinearGradient
-                      colors={["#7c3aed", "#a855f7"]}
+                      colors={["#2A2A2A", "#000000"]}
                       style={styles.cameraGradient}
                     >
                       <Ionicons name="camera" size={20} color="#ffffff" />
@@ -369,7 +369,7 @@ const ListenerDetailScreen = () => {
                       >
                         {isSelected ? (
                           <LinearGradient
-                            colors={["#7c3aed", "#9333ea", "#a855f7"]}
+                            colors={["#2A2A2A", "#1A1A1A", "#000000"]}
                             style={styles.dayBubbleGradient}
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 1 }}
@@ -440,7 +440,7 @@ const ListenerDetailScreen = () => {
                 style={styles.submitButton}
               >
                 <LinearGradient
-                  colors={["#7c3aed", "#9333ea", "#a855f7"]}
+                  colors={["#2A2A2A", "#1A1A1A", "#000000"]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.buttonGradient}
@@ -538,7 +538,7 @@ const styles = StyleSheet.create({
     right: 5,
     borderRadius: 20,
     overflow: "hidden",
-    shadowColor: "#7c3aed",
+    shadowColor: "#2A2A2A",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.5,
     shadowRadius: 8,
@@ -609,7 +609,7 @@ const styles = StyleSheet.create({
   submitButton: {
     borderRadius: 16,
     overflow: "hidden",
-    shadowColor: "#7c3aed",
+    shadowColor: "#2A2A2A",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.6,
     shadowRadius: 16,
@@ -711,7 +711,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   rateCircleActive: {
-    borderColor: "#7c3aed",
+    borderColor: "#2A2A2A",
     borderWidth: 3,
   },
   rateCircleGradient: {

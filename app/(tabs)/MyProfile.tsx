@@ -1,7 +1,12 @@
 import { useTheme } from "@/components/contexts/ThemeContext";
-import TopBar from "@/components/resuables/TopBar";
 import { MyProfileSkeleton } from "@/components/skeletons";
 import { api } from "@/components/utils/api";
+import {
+  CACHE_EXPIRY,
+  CACHE_KEYS,
+  getFromCache,
+  saveToCache,
+} from "@/components/utils/cacheStorage";
 import { Colors } from "@/constants/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -34,17 +39,42 @@ export default function MyProfile() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
 
-  const fetchMyProfile = async () => {
+  const fetchMyProfile = async (useCache: boolean = true) => {
     try {
+      // Try to get from cache first
+      if (useCache) {
+        const [cachedProfile, cachedStats] = await Promise.all([
+          getFromCache<any>(CACHE_KEYS.MY_PROFILE, CACHE_EXPIRY.MY_PROFILE),
+          getFromCache<any>(CACHE_KEYS.USER_STATS, CACHE_EXPIRY.USER_STATS),
+        ]);
+
+        if (cachedProfile && cachedStats) {
+          console.log("✅ Loading profile from cache");
+          setUserProfileData(cachedProfile);
+          setUserType(cachedProfile.userType);
+          setProfileImage(cachedProfile.profileImage);
+          setUserStats(cachedStats);
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      // Fetch from API if no cache
+      console.log("📡 Fetching profile from API");
       const profileRes = await api.get("/api/v1/users/myProfile");
       if (profileRes.data) {
         setUserProfileData(profileRes.data);
         setUserType(profileRes.data.userType);
         setProfileImage(profileRes.data.profileImage);
+        // Save to cache
+        await saveToCache(CACHE_KEYS.MY_PROFILE, profileRes.data);
       }
+
       const statsRes = await api.get("/api/v1/users/getStats");
       if (statsRes.data) {
         setUserStats(statsRes.data.stats);
+        // Save to cache
+        await saveToCache(CACHE_KEYS.USER_STATS, statsRes.data.stats);
       }
     } catch (error) {
       console.log("Error fetching my profile or stats:", error);
@@ -55,15 +85,29 @@ export default function MyProfile() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchMyProfile();
+    await fetchMyProfile(false); // Force fetch from API on refresh
     setRefreshing(false);
   };
 
   useFocusEffect(
     useCallback(() => {
-      setIsLoading(true);
-      fetchMyProfile();
-    }, [])
+      const loadProfile = async () => {
+        // Check if we have cached data
+        const cachedProfile = await getFromCache<any>(
+          CACHE_KEYS.MY_PROFILE,
+          CACHE_EXPIRY.MY_PROFILE,
+        );
+
+        // Only show loading skeleton if no cache exists
+        if (!cachedProfile) {
+          setIsLoading(true);
+        }
+
+        fetchMyProfile();
+      };
+
+      loadProfile();
+    }, []),
   );
 
   useEffect(() => {
@@ -108,7 +152,7 @@ export default function MyProfile() {
         {
           label: "Total Time",
           value: Math.round(
-            (userStats.totalChatTime || userStats.timeSpentListening || 0) / 60
+            (userStats.totalChatTime || userStats.timeSpentListening || 0) / 60,
           ),
           icon: "time-outline",
           suffix: "min",
@@ -176,8 +220,8 @@ export default function MyProfile() {
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background }]}
+      edges={[]}
     >
-      <TopBar />
       {isLoading ? (
         <MyProfileSkeleton />
       ) : (
@@ -280,7 +324,7 @@ export default function MyProfile() {
                 styles.actionButton,
                 { backgroundColor: colors.cardBackground },
               ]}
-              onPress={() => {}}
+              onPress={() => router.push("/EditProfile")}
             >
               <Ionicons name="create-outline" size={20} color={colors.text} />
               <Text style={[styles.actionButtonText, { color: colors.text }]}>
@@ -347,11 +391,11 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   profileImage: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 240,
+    height: 240,
+    borderRadius: 200,
     borderWidth: 3,
-    borderColor: "#b794f6",
+    borderColor: "#a855f7",
   },
   profileImagePlaceholder: {
     width: 120,
@@ -360,7 +404,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 3,
-    borderColor: "#b794f6",
+    borderColor: "#FFFFFF",
   },
   profileName: {
     fontSize: 28,
@@ -379,6 +423,21 @@ const styles = StyleSheet.create({
   },
   userTypeText: {
     fontSize: 14,
+    fontWeight: "600",
+  },
+  editProfileButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 25,
+    marginTop: 16,
+  },
+  editProfileButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
     fontWeight: "600",
   },
   bioText: {

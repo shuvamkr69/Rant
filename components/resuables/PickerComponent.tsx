@@ -78,7 +78,7 @@ const PickerComponent: React.FC<PickerComponentProps> = ({
                   >
                     {isSelected ? (
                       <LinearGradient
-                        colors={["#7c3aed", "#9333ea", "#a855f7"]}
+                        colors={["#2A2A2A", "#1A1A1A", "#000000"]}
                         style={styles.bubbleGradientBorder}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}

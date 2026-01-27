@@ -44,7 +44,7 @@ const ViewOtherProfile = () => {
     return (
       <SafeAreaView style={styles.safeArea} edges={["top"]}>
         <LinearGradient
-          colors={["#1a0033", "#2d0a4e", "#4a1475", "#6b1fa8"]}
+          colors={["#000000", "#0A0A0A", "#1A1A1A", "#2A2A2A"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.gradient}
@@ -62,7 +62,7 @@ const ViewOtherProfile = () => {
     return (
       <SafeAreaView style={styles.safeArea} edges={["top"]}>
         <LinearGradient
-          colors={["#1a0033", "#2d0a4e", "#4a1475", "#6b1fa8"]}
+          colors={["#000000", "#0A0A0A", "#1A1A1A", "#2A2A2A"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.gradient}
@@ -80,7 +80,7 @@ const ViewOtherProfile = () => {
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
       <LinearGradient
-        colors={["#1a0033", "#2d0a4e", "#4a1475", "#6b1fa8"]}
+        colors={["#000000", "#0A0A0A", "#1A1A1A", "#2A2A2A"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.gradient}

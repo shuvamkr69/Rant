@@ -1,4 +1,10 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
+import {
+  CACHE_EXPIRY,
+  CACHE_KEYS,
+  getFromCache,
+  saveToCache,
+} from "../utils/cacheStorage";
 import { getAccessToken } from "../utils/tokenStorage";
 
 type Message = {
@@ -88,7 +94,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
       const token = getAccessToken();
       console.log(
         "🔌 Initializing socket with token:",
-        token ? token.substring(0, 20) + "..." : "none"
+        token ? token.substring(0, 20) + "..." : "none",
       );
 
       if (!token) {
@@ -164,14 +170,14 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
             setSessionStartTime(new Date(data.sessionStartTime));
             setWaitingForOtherUser(false);
             console.log(
-              "✅ Session start time set, waitingForOtherUser = false"
+              "✅ Session start time set, waitingForOtherUser = false",
             );
           } else if (data.waitingForOtherUser) {
             setWaitingForOtherUser(true);
             setSessionStartTime(null);
             console.log("⏳ Waiting for other user...");
           }
-        }
+        },
       );
 
       // Session actually started (when both users are present)
@@ -182,7 +188,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
           setCurrentSessionId(data.sessionId);
           setSessionStartTime(new Date(data.sessionStartTime));
           setWaitingForOtherUser(false);
-        }
+        },
       );
 
       // Session resumed (when user comes back)
@@ -193,7 +199,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
           setCurrentSessionId(data.sessionId);
           setSessionStartTime(new Date(data.sessionStartTime));
           setWaitingForOtherUser(false);
-        }
+        },
       );
 
       // Session ended
@@ -212,7 +218,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
           if (data.requestRating) {
             setCanRateListener(true);
           }
-        }
+        },
       );
 
       // Session ended by other user
@@ -222,7 +228,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
           console.log("🛑 Session ended by other user:", data);
           setSessionStartTime(null);
           setWaitingForOtherUser(true); // Show "waiting for other user" if they try to stay
-        }
+        },
       );
 
       newSocket.on("error", (error: any) => {
@@ -286,15 +292,40 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
 
   const loadMatches = async () => {
     try {
+      // Try to get from cache first
+      const cachedMatches = await getFromCache<Match[]>(
+        CACHE_KEYS.MATCHES,
+        CACHE_EXPIRY.MATCHES,
+      );
+
+      if (cachedMatches) {
+        console.log("✅ Loading matches from cache");
+        setMatches(cachedMatches);
+        // Still fetch from API in background to update cache
+        fetchMatchesFromAPI();
+        return;
+      }
+
+      // No cache, fetch from API
+      await fetchMatchesFromAPI();
+    } catch (error: any) {
+      console.error("❌ Error loading matches:", error);
+      console.error("Error details:", error.response?.data || error.message);
+    }
+  };
+
+  const fetchMatchesFromAPI = async () => {
+    try {
       const { api } = require("../utils/api");
       const response = await api.get("/api/v1/users/fetchMatches");
 
       if (response.status === 200) {
         setMatches(response.data.matches);
+        // Save to cache
+        await saveToCache(CACHE_KEYS.MATCHES, response.data.matches);
       }
     } catch (error: any) {
-      console.error("❌ Error loading matches:", error);
-      console.error("Error details:", error.response?.data || error.message);
+      console.error("❌ Error fetching matches from API:", error);
     }
   };
 

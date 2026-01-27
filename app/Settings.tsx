@@ -4,7 +4,7 @@ import BackButton from "@/components/resuables/BackButton";
 import { api } from "@/components/utils/api";
 import { Colors } from "@/constants/theme";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { router, useRouter } from "expo-router";
 import React from "react";
 import {
   Alert,
@@ -65,6 +65,92 @@ const Settings = () => {
         },
       },
     ]);
+  };
+
+  const handleDeleteAccount = async () => {
+    Alert.alert(
+      "⚠️ Delete Account",
+      "This will permanently delete your account and all associated data including:\n\n• All your messages\n• Your profile and matches\n• Session history\n• Statistics\n\nThis action CANNOT be undone. Are you absolutely sure?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete Forever",
+          style: "destructive",
+          onPress: async () => {
+            // Double confirmation
+            Alert.alert(
+              "Final Confirmation",
+              "Last chance! Delete your account permanently?",
+              [
+                {
+                  text: "No, Keep My Account",
+                  style: "cancel",
+                },
+                {
+                  text: "Yes, Delete Everything",
+                  style: "destructive",
+                  onPress: async () => {
+                    try {
+                      console.log("🗑️ Delete account requested");
+
+                      // Show loading state
+                      Alert.alert(
+                        "Deleting...",
+                        "Please wait while we delete your account",
+                      );
+
+                      // Disconnect socket first
+                      if (socket) {
+                        console.log("🔌 Disconnecting socket before deletion");
+                        socket.disconnect();
+                      }
+
+                      // Call delete account API
+                      const response = await api.delete(
+                        "/api/v1/users/delete-account",
+                      );
+
+                      if (response.status === 200) {
+                        console.log("✅ Account deleted successfully");
+
+                        // Clear local auth state
+                        await signOut();
+                        console.log("✅ Local auth state cleared");
+
+                        // Show success message
+                        Alert.alert(
+                          "Account Deleted",
+                          "Your account has been permanently deleted. We're sorry to see you go.",
+                          [
+                            {
+                              text: "OK",
+                              onPress: () => navigation.replace("/Login"),
+                            },
+                          ],
+                        );
+                      }
+                    } catch (error: any) {
+                      console.error("❌ Delete account error:", error);
+
+                      let errorMessage =
+                        "Failed to delete account. Please try again.";
+                      if (error.response?.data?.message) {
+                        errorMessage = error.response.data.message;
+                      }
+
+                      Alert.alert("Error", errorMessage);
+                    }
+                  },
+                },
+              ],
+            );
+          },
+        },
+      ],
+    );
   };
 
   const SettingItem = ({
@@ -133,7 +219,7 @@ const Settings = () => {
           icon="person-outline"
           title="Edit Profile"
           subtitle="Update your personal information"
-          onPress={() => navigation.push("/MyProfile")}
+          onPress={() => router.push("/EditProfile")}
         />
         <SettingItem
           icon="lock-closed-outline"
@@ -147,16 +233,7 @@ const Settings = () => {
           icon="trash-outline"
           title="Delete Account"
           subtitle="Permanently delete your account"
-          onPress={() => {
-            Alert.alert(
-              "Delete Account",
-              "Are you sure? This action cannot be undone.",
-              [
-                { text: "Cancel", style: "cancel" },
-                { text: "Delete", style: "destructive", onPress: () => {} },
-              ]
-            );
-          }}
+          onPress={handleDeleteAccount}
         />
 
         {/* Notifications Section */}

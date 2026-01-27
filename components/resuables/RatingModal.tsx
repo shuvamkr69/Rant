@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 400,
     borderWidth: 1,
-    borderColor: "#6b1fa8",
+    borderColor: "#2A2A2A",
   },
   header: {
     flexDirection: "row",
@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   submitButton: {
-    backgroundColor: "#6b1fa8",
+    backgroundColor: "#2A2A2A",
   },
   submitButtonDisabled: {
     backgroundColor: "#444",

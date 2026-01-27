@@ -2,6 +2,7 @@ import { useChat } from "@/components/contexts/chatContext";
 import { useTheme } from "@/components/contexts/ThemeContext";
 import { useCustomAlert } from "@/components/resuables/CustomAlert";
 import RatingModal from "@/components/resuables/RatingModal";
+import ReportModal from "@/components/resuables/ReportModal";
 import { api } from "@/components/utils/api";
 import { Colors } from "@/constants/theme";
 import { Ionicons } from "@expo/vector-icons";
@@ -57,6 +58,7 @@ export default function ChatScreen() {
   const [isExiting, setIsExiting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [showRatingModal, setShowRatingModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
   const [otherUserProfileImage, setOtherUserProfileImage] = useState<
     string | null
   >(null);
@@ -125,6 +127,57 @@ export default function ChatScreen() {
   const handleCloseRatingModal = () => {
     setShowRatingModal(false);
     resetRatingState();
+  };
+
+  const handleSubmitReport = async (reason: string, message: string) => {
+    try {
+      console.log("📝 Submitting report:", {
+        reason,
+        message,
+        reportedUserId: userId,
+        sessionId: currentSessionId,
+      });
+
+      const response = await api.post("/api/v1/reports/submit", {
+        reportedUserId: userId,
+        reason,
+        message,
+        sessionId: currentSessionId || undefined,
+      });
+
+      if (response.status === 201) {
+        showAlert(
+          "Report Submitted",
+          "Thank you for your report. Our team will review it and take appropriate action.",
+          [{ text: "OK", style: "default" }],
+          { icon: "checkmark-circle", iconColor: "#4CAF50" },
+        );
+        setShowReportModal(false);
+      }
+    } catch (error: any) {
+      console.error("❌ Error submitting report:", error);
+      const errorMessage =
+        error.response?.data?.message ||
+        "Failed to submit report. Please try again.";
+      showAlert("Error", errorMessage, [{ text: "OK", style: "default" }], {
+        icon: "alert-circle",
+        iconColor: "#ff5252",
+      });
+    }
+  };
+
+  const handleOpenReportModal = () => {
+    // Only users can report listeners
+    if (myProfileData?.userType !== "User") {
+      showAlert(
+        "Not Available",
+        "Only users can report listeners.",
+        [{ text: "OK", style: "default" }],
+        { icon: "information-circle", iconColor: "#2196F3" },
+      );
+      return;
+    }
+    setShowReportModal(true);
   };
 
   const fetchMyInfo = async () => {
@@ -285,7 +338,7 @@ export default function ChatScreen() {
               onPress: () => router.back(),
             },
           ],
-          { icon: "information-circle", iconColor: "#6b1fa8" },
+          { icon: "information-circle", iconColor: "#2A2A2A" },
         );
       };
 
@@ -393,7 +446,7 @@ export default function ChatScreen() {
           style={[
             styles.messageBubble,
             {
-              backgroundColor: isMyMessage ? "#6b1fa8" : "#222",
+              backgroundColor: isMyMessage ? "#2A2A2A" : "#222",
             },
           ]}
         >
@@ -437,8 +490,8 @@ export default function ChatScreen() {
         style={[
           styles.header,
           {
-            backgroundColor: "#6b1fa8",
-            borderBottomColor: "#6b1fa8",
+            backgroundColor: "#2A2A2A",
+            borderBottomColor: "#2A2A2A",
           },
         ]}
       >
@@ -543,6 +596,16 @@ export default function ChatScreen() {
             </Text>
           )}
         </View>
+
+        {/* Report Button - Only show for Users */}
+        {myProfileData?.userType === "User" && (
+          <TouchableOpacity
+            onPress={handleOpenReportModal}
+            style={styles.reportButton}
+          >
+            <Ionicons name="flag-outline" size={22} color="#ffffff" />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Messages List */}
@@ -563,14 +626,14 @@ export default function ChatScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
-              tintColor="#6b1fa8"
-              colors={["#6b1fa8"]}
+              tintColor="#2A2A2A"
+              colors={["#2A2A2A"]}
               title="Pull to refresh"
-              titleColor="#6b1fa8"
+              titleColor="#2A2A2A"
             />
           }
         >
-          <Ionicons name="hourglass-outline" size={64} color="#6b1fa8" />
+          <Ionicons name="hourglass-outline" size={64} color="#2A2A2A" />
           <Text style={[styles.pendingTitle, { color: colors.text }]}>
             Waiting for {name} to join
           </Text>
@@ -632,7 +695,7 @@ export default function ChatScreen() {
             <Ionicons
               name="alert-circle"
               size={18}
-              color="#6b1fa8"
+              color="#2A2A2A"
               style={styles.limitBannerIcon}
             />
             <Text
@@ -651,7 +714,7 @@ export default function ChatScreen() {
         <View
           style={[
             styles.inputContainer,
-            { backgroundColor: "#160426ff", borderTopColor: "#6b1fa8" },
+            { backgroundColor: "#160426ff", borderTopColor: "#2A2A2A" },
           ]}
         >
           <TextInput
@@ -724,7 +787,7 @@ export default function ChatScreen() {
                     wordCountStatus.wordLimit !== -1) ||
                   waitingForOtherUser
                     ? "#ccc"
-                    : "#6b1fa8",
+                    : "#2A2A2A",
               },
             ]}
             onPress={handleSend}
@@ -753,6 +816,14 @@ export default function ChatScreen() {
         onClose={handleCloseRatingModal}
         onSubmit={handleSubmitRating}
       />
+
+      {/* Report Modal */}
+      <ReportModal
+        visible={showReportModal}
+        listenerName={name as string}
+        onClose={() => setShowReportModal(false)}
+        onSubmit={handleSubmitReport}
+      />
     </SafeAreaView>
   );
 }
@@ -769,6 +840,10 @@ const styles = StyleSheet.create({
   },
   backButton: {
     marginRight: 15,
+  },
+  reportButton: {
+    padding: 8,
+    marginLeft: 8,
   },
   profilePictureContainer: {
     marginRight: 12,
@@ -901,7 +976,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
     padding: 10,
     borderTopWidth: 1,
-    borderColor: "#6b1fa8",
+    borderColor: "#2A2A2A",
   },
   input: {
     flex: 1,
@@ -923,7 +998,7 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
     flexDirection: "row",
     alignItems: "center",
-    borderColor: "#6b1fa8",
+    borderColor: "#2A2A2A",
     borderWidth: 1,
     paddingHorizontal: 20,
     paddingVertical: 8,

@@ -151,7 +151,7 @@ export const CustomAlert: React.FC<CustomAlertProps> = ({
                           <Ionicons
                             name={icon}
                             size={48}
-                            color={iconColor || "#6b1fa8"}
+                            color={iconColor || "#2A2A2A"}
                           />
                         </View>
                       )}
@@ -168,7 +168,7 @@ export const CustomAlert: React.FC<CustomAlertProps> = ({
                         <Ionicons
                           name={icon}
                           size={48}
-                          color={iconColor || "#6b1fa8"}
+                          color={iconColor || "#2A2A2A"}
                         />
                       </View>
                     )}

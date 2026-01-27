@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import { createContext, useContext, useEffect, useState } from "react";
+import { clearAllCaches } from "../utils/cacheStorage";
 import { APP_EVENTS, appEvents } from "../utils/eventEmitter";
 import {
   registerForPushNotificationsAsync,
@@ -50,18 +51,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         console.log("🔍 [Auth] Stored state:", storedState);
         console.log(
           "🔍 [Auth] Access Token:",
-          accessToken ? "present" : "null"
+          accessToken ? "present" : "null",
         );
         console.log(
           "🔍 [Auth] Refresh Token:",
-          refreshToken ? "present" : "null"
+          refreshToken ? "present" : "null",
         );
         console.log("🔍 [Auth] Premium Status:", premiumStatus);
 
         // If user should be signed in but no access token in memory
         if (storedState === "true" && !accessToken && refreshToken) {
           console.log(
-            "🔄 [Auth] No access token in memory, but refresh token exists. Refreshing..."
+            "🔄 [Auth] No access token in memory, but refresh token exists. Refreshing...",
           );
 
           try {
@@ -69,7 +70,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             const backend_url = process.env.EXPO_PUBLIC_BACKEND_URL;
             const response = await axios.post(
               `${backend_url}/api/v1/users/refresh-token`,
-              { refreshToken }
+              { refreshToken },
             );
 
             const {
@@ -79,7 +80,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
             if (newAccessToken) {
               console.log(
-                "✅ [Auth] Successfully refreshed access token on app start"
+                "✅ [Auth] Successfully refreshed access token on app start",
               );
               await setAccessToken(newAccessToken);
               if (newRefreshToken) {
@@ -93,7 +94,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           } catch (refreshError: any) {
             console.error(
               "❌ [Auth] Failed to refresh token on app start:",
-              refreshError
+              refreshError,
             );
             console.log("🚪 [Auth] Clearing auth state and forcing logout");
 
@@ -168,6 +169,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       // Clear all tokens
       await clearAllTokens();
 
+      // Clear all cached data
+      await clearAllCaches();
+      console.log("🗑️ All caches cleared");
+
       // Clear auth state
       await AsyncStorage.removeItem("isSignedIn");
       await AsyncStorage.removeItem("isPremium");
@@ -175,7 +180,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setIsSignedIn(false);
       setUser(null);
       setIsPremium(false);
-      console.log("✅ Sign out complete - All tokens removed");
+      console.log("✅ Sign out complete - All tokens and caches removed");
     } catch (error) {
       console.error("❌ Error signing out:", error);
     }

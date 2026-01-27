@@ -88,7 +88,7 @@ function RootNavigator() {
     const applyAndroidSystemBars = async () => {
       if (Platform.OS !== "android") return;
       try {
-        await NavigationBar.setBackgroundColorAsync("#6b1fa8");
+        await NavigationBar.setBackgroundColorAsync("#000000");
         await NavigationBar.setButtonStyleAsync("light");
         await NavigationBar.setVisibilityAsync("visible");
         await NavigationBar.setBehaviorAsync("inset-swipe");
@@ -128,15 +128,17 @@ function RootNavigator() {
         <Stack
           screenOptions={{
             headerShown: false,
-            animation: "fade",
-            animationDuration: 1000,
+            animation: "slide_from_right",
+            animationDuration: 300,
             gestureEnabled: true,
+            gestureDirection: "horizontal",
           }}
         >
           <Stack.Screen
             name="(tabs)"
             options={{
               gestureEnabled: false,
+              animation: "fade",
             }}
             listeners={{
               focus: () => setShowBlur(true),
@@ -144,18 +146,27 @@ function RootNavigator() {
           />
           <Stack.Screen
             name="Settings"
+            options={{
+              animation: "slide_from_right",
+            }}
             listeners={{
               focus: () => setShowBlur(true),
             }}
           />
           <Stack.Screen
             name="Notifications"
+            options={{
+              animation: "slide_from_right",
+            }}
             listeners={{
               focus: () => setShowBlur(true),
             }}
           />
           <Stack.Screen
             name="ChatScreen"
+            options={{
+              animation: "slide_from_right",
+            }}
             listeners={{
               focus: () => setShowBlur(true),
             }}
@@ -197,7 +208,7 @@ function RootNavigator() {
       <BlurTransitionOverlay isVisible={showBlur} />
       <StatusBar
         style="light"
-        backgroundColor="#6b1fa8"
+        backgroundColor="#000000"
         translucent={false}
         hidden={false}
         animated={true}

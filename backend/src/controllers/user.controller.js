@@ -98,7 +98,7 @@ export const registerUser = async (req, res) => {
   }
 
   const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
-    newUser._id
+    newUser._id,
   );
   console.log({ accessToken, refreshToken });
 
@@ -123,7 +123,7 @@ export const loginUser = async (req, res) => {
     return res.status(401).json({ message: "Invalid mobile Number" });
   }
   const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
-    user._id
+    user._id,
   );
   console.log({ accessToken });
   return res.status(200).json({
@@ -149,11 +149,11 @@ export const logoutUser = async (req, res) => {
     await User.findByIdAndUpdate(
       userId,
       { $unset: { refreshToken: "" } },
-      { new: true }
+      { new: true },
     );
 
     console.log(
-      `✅ User ${userId} (${userName}) logged out successfully - Refresh token cleared from DB`
+      `✅ User ${userId} (${userName}) logged out successfully - Refresh token cleared from DB`,
     );
 
     return res.status(200).json({
@@ -195,7 +195,7 @@ export const fetchWalletBalance = async (req, res) => {
     const now = new Date();
     const lastReset = new Date(stats.lastWordResetDate);
     const daysSinceReset = Math.floor(
-      (now - lastReset) / (1000 * 60 * 60 * 24)
+      (now - lastReset) / (1000 * 60 * 60 * 24),
     );
 
     // Reset if it's been 30+ days
@@ -250,7 +250,7 @@ export const getWordCountStatus = async (req, res) => {
     const now = new Date();
     const lastReset = new Date(stats.lastWordResetDate);
     const daysSinceReset = Math.floor(
-      (now - lastReset) / (1000 * 60 * 60 * 24)
+      (now - lastReset) / (1000 * 60 * 60 * 24),
     );
 
     // Reset if it's been 30+ days
@@ -291,7 +291,7 @@ export const fetchUserProfileById = async (req, res) => {
     }
 
     const user = await User.findById(userId).select(
-      "-refreshToken -__v -updatedAt -mobileNumber"
+      "-refreshToken -__v -updatedAt -mobileNumber",
     );
 
     if (!user) {
@@ -367,7 +367,7 @@ export const refreshAccessToken = async (req, res) => {
       await generateAccessAndRefreshTokens(user._id);
 
     console.log(
-      `🔄 Access token refreshed for user ${user._id} (${user.name})`
+      `🔄 Access token refreshed for user ${user._id} (${user.name})`,
     );
 
     return res.status(200).json({
@@ -380,6 +380,190 @@ export const refreshAccessToken = async (req, res) => {
     return res
       .status(500)
       .json({ message: "Server error", error: error.message });
+  }
+};
+
+export const deleteAccount = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    console.log(`🗑️ Delete account requested for user: ${userId}`);
+
+    // Import necessary models
+    const { Message } = await import("../models/message.model.js");
+    const { Profile } = await import("../models/profile.model.js");
+    const { Session } = await import("../models/session.model.js");
+    const { Subscription } = await import("../models/subscription.model.js");
+
+    // Find the user first
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    console.log(
+      `📊 Starting deletion process for ${user.name} (${user.userType})`,
+    );
+
+    // Delete all related data
+    // 1. Delete messages where user is sender or receiver
+    const messagesDeleted = await Message.deleteMany({
+      $or: [{ senderId: userId }, { receiverId: userId }],
+    });
+    console.log(`✅ Deleted ${messagesDeleted.deletedCount} messages`);
+
+    // 2. Delete profiles where user is involved
+    const profilesDeleted = await Profile.deleteMany({
+      $or: [{ userId: userId }, { listenerId: userId }],
+    });
+    console.log(`✅ Deleted ${profilesDeleted.deletedCount} profiles/matches`);
+
+    // 3. Delete sessions where user participated
+    const sessionsDeleted = await Session.deleteMany({
+      $or: [{ userId: userId }, { listenerId: userId }],
+    });
+    console.log(`✅ Deleted ${sessionsDeleted.deletedCount} sessions`);
+
+    // 4. Delete subscriptions
+    const subscriptionsDeleted = await Subscription.deleteMany({ userId });
+    console.log(
+      `✅ Deleted ${subscriptionsDeleted.deletedCount} subscriptions`,
+    );
+
+    // 5. Delete user stats
+    if (user.userType === "Listener") {
+      const listenerStatsDeleted = await ListenerStats.deleteOne({ userId });
+      console.log(
+        `✅ Deleted listener stats: ${listenerStatsDeleted.deletedCount}`,
+      );
+    } else {
+      const userStatsDeleted = await UserStats.deleteOne({ userId });
+      console.log(`✅ Deleted user stats: ${userStatsDeleted.deletedCount}`);
+    }
+
+    // 6. Finally, delete the user account
+    await User.findByIdAndDelete(userId);
+    console.log(`✅ User account deleted: ${userId}`);
+
+    // Clear cookies
+    res.clearCookie("accessToken");
+    res.clearCookie("refreshToken");
+
+    return res.status(200).json({
+      success: true,
+      message: "Account deleted successfully. All your data has been removed.",
+    });
+  } catch (error) {
+    console.error("❌ Error deleting account:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to delete account",
+      error: error.message,
+    });
+  }
+};
+
+// Get current user's profile
+export const getMyProfile = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const user = await User.findById(userId).select("-refreshToken");
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.status(200).json(user);
+  } catch (error) {
+    console.error("❌ [Get My Profile] Error:", error);
+    return res.status(500).json({
+      message: "Failed to fetch profile",
+      error: error.message,
+    });
+  }
+};
+
+// Update user profile
+export const updateUserProfile = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { name, age, bio, occupation, daysAvailable, timings } = req.body;
+
+    console.log("🔵 [Update Profile] Request received:", {
+      userId,
+      body: req.body,
+      hasFile: !!req.file,
+    });
+
+    // Find the user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Prepare update object
+    const updateData = {};
+
+    // Update basic fields if provided
+    if (name) updateData.name = name;
+    if (age) {
+      const parsedAge = parseInt(age);
+      if (parsedAge < 18) {
+        return res.status(400).json({ message: "Age must be at least 18" });
+      }
+      updateData.age = parsedAge;
+    }
+    if (bio !== undefined) updateData.bio = bio;
+    if (occupation !== undefined) updateData.occupation = occupation;
+    if (timings !== undefined) updateData.timings = timings;
+
+    // Parse and update daysAvailable if provided
+    if (daysAvailable !== undefined) {
+      try {
+        updateData.daysAvailable =
+          typeof daysAvailable === "string"
+            ? JSON.parse(daysAvailable)
+            : daysAvailable;
+      } catch (error) {
+        console.error("Error parsing daysAvailable:", error);
+        return res
+          .status(400)
+          .json({ message: "Invalid daysAvailable format" });
+      }
+    }
+
+    // Handle profile image upload if provided
+    if (req.file) {
+      console.log("🔵 [Update Profile] Uploading new profile image...");
+      const profileImageUrl = await uploadToCloudinary(
+        req.file.path,
+        "profiles",
+      );
+      updateData.profileImage = profileImageUrl;
+      console.log(
+        "✅ [Update Profile] Profile image uploaded:",
+        profileImageUrl,
+      );
+    }
+
+    // Update the user
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { $set: updateData },
+      { new: true, runValidators: true },
+    ).select("-refreshToken");
+
+    console.log("✅ [Update Profile] Profile updated successfully");
+
+    return res.status(200).json({
+      message: "Profile updated successfully",
+      user: updatedUser,
+    });
+  } catch (error) {
+    console.error("❌ [Update Profile] Error:", error);
+    return res.status(500).json({
+      message: "Failed to update profile",
+      error: error.message,
+    });
   }
 };
 

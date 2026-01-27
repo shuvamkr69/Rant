@@ -175,7 +175,7 @@ const HelpSupport = () => {
             title="Email Support"
             subtitle="support@rant.com"
             onPress={sendEmail}
-            color="#b794f6"
+            color="#FFFFFF"
           />
           <ContactOption
             icon="call-outline"

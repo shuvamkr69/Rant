@@ -30,17 +30,17 @@
       "package": "com.flaminco.rant"
     },
     "androidStatusBar": {
-      "backgroundColor": "#6b1fa8",
+      "backgroundColor": "#000000",
       "barStyle": "light-content",
       "translucent": false
     },
     "androidNavigationBar": {
-      "backgroundColor": "#6b1fa8",
+      "backgroundColor": "#000000",
       "barStyle": "light-content"
     },
     "notification": {
       "icon": "./assets/images/icon.png",
-      "color": "#6b1fa8",
+      "color": "#000000",
       "androidMode": "default",
       "androidCollapsedTitle": "New message"
     },
@@ -54,7 +54,7 @@
         "expo-notifications",
         {
           "icon": "./assets/images/icon.png",
-          "color": "#6b1fa8"
+          "color": "#000000"
         }
       ],
       [
@@ -63,9 +63,9 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#6b1fa8",
+          "backgroundColor": "#000000",
           "dark": {
-            "backgroundColor": "#6b1fa8"
+            "backgroundColor": "#000000"
           }
         }
       ]
