@@ -1,5 +1,6 @@
 import { AuthProvider, useAuth } from "@/components/contexts/authContext";
 import { ChatProvider } from "@/components/contexts/chatContext";
+import { NotificationProvider } from "@/components/contexts/notificationContext";
 import { ThemeProvider, useTheme } from "@/components/contexts/ThemeContext";
 import {
   DarkTheme,
@@ -202,6 +203,12 @@ function RootNavigator() {
               focus: () => setShowBlur(true),
             }}
           />
+          <Stack.Screen
+            name="UserDetailScreen"
+            listeners={{
+              focus: () => setShowBlur(true),
+            }}
+          />
         </Stack>
       )}
 
@@ -221,9 +228,11 @@ export default function RootLayout() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <ChatProvider>
-          <RootNavigator />
-        </ChatProvider>
+        <NotificationProvider>
+          <ChatProvider>
+            <RootNavigator />
+          </ChatProvider>
+        </NotificationProvider>
       </AuthProvider>
     </ThemeProvider>
   );

@@ -14,6 +14,7 @@ import {
   getAccessToken,
   getRefreshToken,
   initializeAccessToken,
+  isAccessTokenExpiringSoon,
   setAccessToken,
   setRefreshToken,
 } from "../utils/tokenStorage";
@@ -35,6 +36,52 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isPremium, setIsPremium] = useState(false);
+
+  // Function to refresh the access token
+  const refreshAccessToken = async (): Promise<boolean> => {
+    try {
+      const refreshToken = await getRefreshToken();
+
+      if (!refreshToken) {
+        console.error("❌ [Auth] No refresh token found");
+        return false;
+      }
+
+      console.log("🔄 [Auth] Proactively refreshing access token...");
+
+      const backend_url = process.env.EXPO_PUBLIC_BACKEND_URL;
+      const response = await axios.post(
+        `${backend_url}/api/v1/users/refresh-token`,
+        { refreshToken },
+      );
+
+      const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
+        response.data;
+
+      if (newAccessToken) {
+        console.log("✅ [Auth] Successfully refreshed access token");
+        // Assuming token expires in 15 minutes (900 seconds) by default
+        await setAccessToken(newAccessToken, 900);
+        if (newRefreshToken) {
+          await setRefreshToken(newRefreshToken);
+        }
+        return true;
+      } else {
+        console.error("❌ [Auth] No access token in refresh response");
+        return false;
+      }
+    } catch (refreshError: any) {
+      console.error("❌ [Auth] Failed to refresh token:", refreshError);
+
+      // If refresh token is invalid/expired, force logout
+      if (refreshError.response?.status === 401) {
+        console.log("🚪 [Auth] Refresh token expired, forcing logout");
+        await signOut();
+      }
+
+      return false;
+    }
+  };
 
   useEffect(() => {
     const checkStatus = async () => {
@@ -82,7 +129,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               console.log(
                 "✅ [Auth] Successfully refreshed access token on app start",
               );
-              await setAccessToken(newAccessToken);
+              await setAccessToken(newAccessToken, 900); // 15 minutes
               if (newRefreshToken) {
                 await setRefreshToken(newRefreshToken);
               }
@@ -115,14 +162,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setIsPremium(premiumStatus === "true");
 
           // Register push token when app opens and user is signed in (non-blocking)
+          console.log("🔔 [Auth] Starting push token registration...");
           registerForPushNotificationsAsync()
             .then((pushToken) => {
+              console.log(
+                "🔔 [Auth] Push token received from registration:",
+                pushToken,
+              );
               if (pushToken) {
+                console.log("🔔 [Auth] Sending push token to backend...");
                 sendPushTokenToBackend(pushToken);
+              } else {
+                console.warn(
+                  "⚠️ [Auth] Push token is null, not sending to backend",
+                );
               }
             })
             .catch((error) => {
-              console.error("Failed to register push token:", error);
+              console.error("❌ [Auth] Failed to register push token:", error);
             });
         } else {
           console.log("ℹ️ [Auth] User is not authenticated");
@@ -146,11 +203,39 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     appEvents.on(APP_EVENTS.FORCE_LOGOUT, handleForceLogout);
 
+    // Set up periodic token refresh check (every 2 minutes)
+    const tokenRefreshInterval = setInterval(
+      async () => {
+        // Only check if user is signed in
+        if (!isSignedIn) return;
+
+        const accessToken = getAccessToken();
+        if (!accessToken) {
+          console.log("⚠️ [Auth] No access token found during periodic check");
+          return;
+        }
+
+        // Check if token is expiring soon
+        if (isAccessTokenExpiringSoon()) {
+          console.log("⏰ [Auth] Access token expiring soon, refreshing...");
+          const refreshed = await refreshAccessToken();
+
+          if (!refreshed) {
+            console.log(
+              "❌ [Auth] Failed to refresh token during periodic check",
+            );
+          }
+        }
+      },
+      2 * 60 * 1000,
+    ); // Check every 2 minutes
+
     return () => {
       cleanup();
+      clearInterval(tokenRefreshInterval);
       appEvents.off(APP_EVENTS.FORCE_LOGOUT, handleForceLogout);
     };
-  }, []);
+  }, [isSignedIn]);
 
   const signIn = async () => {
     setIsSignedIn(true);
@@ -159,15 +244,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = async () => {
     try {
-      console.log("🔓 Signing out - Removing tokens from storage");
+      console.log("🔓 Signing out - Starting logout process");
 
-      // Remove push token from backend (non-blocking, best effort)
-      removePushTokenFromBackend().catch((error) => {
-        console.error("Failed to remove push token:", error);
-      });
+      // Try to remove push token from backend BEFORE clearing tokens (best effort)
+      // This needs to be done while we still have a valid access token
+      try {
+        await removePushTokenFromBackend();
+      } catch (error) {
+        console.warn("⚠️ Failed to remove push token (non-critical):", error);
+        // Continue with logout even if this fails
+      }
 
       // Clear all tokens
       await clearAllTokens();
+      console.log("🧹 All tokens cleared");
 
       // Clear all cached data
       await clearAllCaches();
@@ -180,9 +270,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setIsSignedIn(false);
       setUser(null);
       setIsPremium(false);
-      console.log("✅ Sign out complete - All tokens and caches removed");
+      console.log("✅ Sign out complete - User logged out successfully");
     } catch (error) {
-      console.error("❌ Error signing out:", error);
+      console.error("❌ Error during sign out:", error);
+      
+      // Even if there's an error, ensure user is logged out locally
+      try {
+        await clearAllTokens();
+        await AsyncStorage.removeItem("isSignedIn");
+        await AsyncStorage.removeItem("isPremium");
+        setIsSignedIn(false);
+        setUser(null);
+        setIsPremium(false);
+        console.log("✅ Forced local logout after error");
+      } catch (finalError) {
+        console.error("❌ Critical error during forced logout:", finalError);
+      }
     }
   };
 

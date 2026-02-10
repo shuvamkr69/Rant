@@ -44,24 +44,41 @@ const Login = () => {
       if (response.status === 200) {
         const { accessToken, refreshToken } = response.data;
 
-        // Store tokens in memory and secure storage
-        await setAccessToken(accessToken);
+        console.log("🔐 [Login] Storing tokens...");
+        // Store tokens in memory and secure storage (assuming 15 minutes expiry)
+        await setAccessToken(accessToken, 900);
         await setRefreshToken(refreshToken);
+        console.log("✅ [Login] Tokens stored successfully");
 
         await signIn();
+        console.log("✅ [Login] User signed in");
 
-        // Register push token after login (non-blocking)
-        registerForPushNotificationsAsync()
-          .then((pushToken) => {
-            if (pushToken) {
-              sendPushTokenToBackend(pushToken);
-            }
-          })
-          .catch((error) => {
-            console.error("Failed to register push token:", error);
-          });
-
+        // Navigate to tabs first
         navigation.replace("/(tabs)");
+
+        // Register push token after login (non-blocking, after navigation)
+        console.log("🔔 [Login] Scheduling push token registration...");
+        setTimeout(async () => {
+          console.log("🔔 [Login] Starting push token registration...");
+          try {
+            const pushToken = await registerForPushNotificationsAsync();
+            console.log("🔔 [Login] Push token received:", pushToken);
+            
+            if (pushToken) {
+              console.log("🔔 [Login] Sending push token to backend...");
+              const sent = await sendPushTokenToBackend(pushToken);
+              if (sent) {
+                console.log("✅ [Login] Push token successfully sent");
+              } else {
+                console.warn("⚠️ [Login] Failed to send push token");
+              }
+            } else {
+              console.warn("⚠️ [Login] Push token is null, not sending to backend");
+            }
+          } catch (error) {
+            console.error("❌ [Login] Failed to register push token:", error);
+          }
+        }, 1500); // Increased delay to 1.5 seconds
       }
     } catch (error) {
       console.error("Login error:", error);

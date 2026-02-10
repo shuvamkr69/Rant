@@ -1,22 +1,22 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { APP_EVENTS, appEvents } from "./eventEmitter";
 import {
-  clearAllTokens,
-  getAccessToken,
-  getRefreshToken,
-  setAccessToken,
+    clearAllTokens,
+    getAccessToken,
+    getRefreshToken,
+    setAccessToken,
 } from "./tokenStorage";
 
 const backend_url = process.env.EXPO_PUBLIC_BACKEND_URL;
 
 export const api = axios.create({
-    baseURL: backend_url,
-    timeout: 10000,
-    headers: {
-        'Content-Type': 'application/json',
-    }
-})
+  baseURL: backend_url,
+  timeout: 10000,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
 
 // Flag to prevent multiple simultaneous refresh attempts
 let isRefreshing = false;
@@ -47,7 +47,7 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    console.log('🔵 [API] Request:', {
+    console.log("🔵 [API] Request:", {
       method: config.method?.toUpperCase(),
       url: config.url,
       baseURL: config.baseURL,
@@ -58,15 +58,15 @@ api.interceptors.request.use(
     return config;
   },
   (error) => {
-    console.error('❌ [API] Request error:', error);
+    console.error("❌ [API] Request error:", error);
     return Promise.reject(error);
-  }
+  },
 );
 
 // Add response interceptor for debugging and token refresh
 api.interceptors.response.use(
   (response) => {
-    console.log('✅ [API] Response:', {
+    console.log("✅ [API] Response:", {
       status: response.status,
       url: response.config.url,
       data: response.data,
@@ -78,7 +78,7 @@ api.interceptors.response.use(
       _retry?: boolean;
     };
 
-    console.error('❌ [API] Response error:', {
+    console.error("❌ [API] Response error:", {
       message: error.message,
       status: error.response?.status,
       url: error.config?.url,
@@ -101,11 +101,15 @@ api.interceptors.response.use(
         return Promise.reject(error);
       }
 
-      console.log("🔄 [Token Refresh] 401 detected, attempting token refresh...");
+      console.log(
+        "🔄 [Token Refresh] 401 detected, attempting token refresh...",
+      );
 
       // If already refreshing, queue this request
       if (isRefreshing) {
-        console.log("⏳ [Token Refresh] Already refreshing, queuing request...");
+        console.log(
+          "⏳ [Token Refresh] Already refreshing, queuing request...",
+        );
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         })
@@ -135,7 +139,7 @@ api.interceptors.response.use(
         // Call refresh token endpoint
         const response = await axios.post(
           `${backend_url}/api/v1/users/refresh-token`,
-          { refreshToken }
+          { refreshToken },
         );
 
         const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
@@ -147,8 +151,8 @@ api.interceptors.response.use(
 
         console.log("✅ [Token Refresh] New tokens received");
 
-        // Update tokens in storage
-        await setAccessToken(newAccessToken);
+        // Update tokens in storage (assuming 15 minutes expiry)
+        await setAccessToken(newAccessToken, 900);
         if (newRefreshToken) {
           const { setRefreshToken } = await import("./tokenStorage");
           await setRefreshToken(newRefreshToken);
@@ -177,7 +181,7 @@ api.interceptors.response.use(
           refreshError.message === "No refresh token available"
         ) {
           console.log(
-            "🚪 [Token Refresh] Invalid/missing refresh token, forcing logout"
+            "🚪 [Token Refresh] Invalid/missing refresh token, forcing logout",
           );
 
           // Clear all tokens
@@ -200,5 +204,5 @@ api.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  }
+  },
 );

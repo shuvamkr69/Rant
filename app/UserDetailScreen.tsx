@@ -66,7 +66,7 @@ const UserDetailScreen = () => {
     if (permissionResult.granted === false) {
       Alert.alert(
         "Permission Denied",
-        "Permission to access media library is required!"
+        "Permission to access media library is required!",
       );
       return;
     }
@@ -118,7 +118,7 @@ const UserDetailScreen = () => {
         Alert.alert("Error", "Please fill in all required fields");
         console.log(
           "Validation failed: Missing required fields" +
-            JSON.stringify(formData)
+            JSON.stringify(formData),
         );
         return;
       }
@@ -151,38 +151,54 @@ const UserDetailScreen = () => {
           headers: {
             "Content-Type": "multipart/form-data",
           },
-        }
+        },
       );
 
       if (response.status === 201) {
         const { accessToken, refreshToken } = response.data;
 
-        // Store tokens in memory and secure storage
-        await setAccessToken(accessToken);
+        console.log("🔐 [Signup] Storing tokens...");
+        // Store tokens in memory and secure storage (assuming 15 minutes expiry)
+        await setAccessToken(accessToken, 900);
         await setRefreshToken(refreshToken);
+        console.log("✅ [Signup] Tokens stored successfully");
 
         await signIn();
-
-        // Register push token after signup (non-blocking)
-        registerForPushNotificationsAsync()
-          .then((pushToken) => {
-            if (pushToken) {
-              sendPushTokenToBackend(pushToken);
-            }
-          })
-          .catch((error) => {
-            console.error("Failed to register push token:", error);
-          });
+        console.log("✅ [Signup] User signed in");
 
         Alert.alert("Success", "Profile created successfully!");
         navigation.replace("/(tabs)" as any);
+
+        // Register push token after signup (non-blocking, after navigation)
+        console.log("🔔 [Signup] Scheduling push token registration...");
+        setTimeout(async () => {
+          console.log("🔔 [Signup] Starting push token registration...");
+          try {
+            const pushToken = await registerForPushNotificationsAsync();
+            console.log("🔔 [Signup] Push token received:", pushToken);
+            
+            if (pushToken) {
+              console.log("🔔 [Signup] Sending push token to backend...");
+              const sent = await sendPushTokenToBackend(pushToken);
+              if (sent) {
+                console.log("✅ [Signup] Push token successfully sent");
+              } else {
+                console.warn("⚠️ [Signup] Failed to send push token");
+              }
+            } else {
+              console.warn("⚠️ [Signup] Push token is null, not sending to backend");
+            }
+          } catch (error) {
+            console.error("❌ [Signup] Failed to register push token:", error);
+          }
+        }, 1500); // Increased delay to 1.5 seconds
       }
     } catch (error: any) {
       console.log("The registration has failed:", error);
       Alert.alert(
         "Error",
         error?.response?.data?.message ||
-          "Registration failed. Please try again."
+          "Registration failed. Please try again.",
       );
     }
   };

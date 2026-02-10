@@ -1,31 +1,37 @@
 import { useTheme } from "@/components/contexts/ThemeContext";
+import { useNotifications } from "@/components/contexts/notificationContext";
 import { Colors } from "@/constants/theme";
 import { RootStackParamList } from "@/types/navigation";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { NavigationProp } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "expo-router";
+import LottieView from "lottie-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
   Image,
+  Modal,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-  Modal,
-  Platform,
 } from "react-native";
-import LottieView from "lottie-react-native";
 
 const TopBar = () => {
   const navigate = useNavigation<NavigationProp<RootStackParamList>>();
   const { colorScheme } = useTheme();
+  const { unreadCount } = useNotifications();
   const colors = Colors;
 
   const navigateToSettings = () => {
     navigate.navigate("Settings");
+  };
+
+  const navigateToNotifications = () => {
+    navigate.navigate("Notifications");
   };
 
   // Animated flowing gradient animation
@@ -82,7 +88,7 @@ const TopBar = () => {
       setTimeout(() => {
         setShowGorilla(true);
         setClickCount(0); // Reset counter
-        
+
         // White flash animation
         Animated.sequence([
           Animated.timing(flashAnim, {
@@ -96,7 +102,7 @@ const TopBar = () => {
             useNativeDriver: true,
           }),
         ]).start();
-        
+
         // Image scale animation
         Animated.spring(imageScaleAnim, {
           toValue: 1,
@@ -133,12 +139,36 @@ const TopBar = () => {
               source={require("../../assets/images/icons/logo.png")}
               style={{ width: 50, height: 50 }}
             />
-            <Text style={[styles.logoText, { color: colors.text }]}>Rant</Text>
           </View>
+
+          {/* Notification Bell */}
+          <View style={styles.notificationContainer}>
+            <TouchableOpacity onPress={navigateToNotifications}>
+              <Ionicons
+                name="notifications-outline"
+                size={26}
+                color={colors.text}
+              />
+              {/* Notification Badge */}
+              {unreadCount > 0 && (
+                <View style={styles.notificationBadge}>
+                  <Text style={styles.badgeText}>
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+
           {/* Easter egg: Chest animation */}
-          <Animated.View style={[styles.chestContainer, { transform: [{ scale: scaleAnim }] }]}>
+          <Animated.View
+            style={[
+              styles.chestContainer,
+              { transform: [{ scale: scaleAnim }] },
+            ]}
+          >
             <TouchableOpacity onPress={handleChestClick} activeOpacity={0.7}>
-              {Platform.OS === 'web' ? (
+              {Platform.OS === "web" ? (
                 // Fallback icon for Expo Go / Web
                 <Ionicons name="gift" size={30} color="#a855f7" />
               ) : (
@@ -206,8 +236,13 @@ const TopBar = () => {
               },
             ]}
           />
-          
-          <Animated.View style={[styles.modalContent, { transform: [{ scale: imageScaleAnim }] }]}>
+
+          <Animated.View
+            style={[
+              styles.modalContent,
+              { transform: [{ scale: imageScaleAnim }] },
+            ]}
+          >
             <Image
               source={require("../../assets/images/gorillaMiddleFinger.png")}
               style={styles.gorillaImage}
@@ -245,6 +280,29 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginRight: 10,
     left: 20,
+  },
+  notificationContainer: {
+    position: "absolute",
+    alignItems: "center",
+    justifyContent: "center",
+    right: 70,
+  },
+  notificationBadge: {
+    position: "absolute",
+    top: -5,
+    right: -5,
+    backgroundColor: "#ef4444",
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4,
+  },
+  badgeText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "bold",
   },
   chestContainer: {
     position: "absolute",

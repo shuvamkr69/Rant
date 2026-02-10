@@ -5,5 +5,6 @@ export type RootStackParamList = {
   MyWallet: undefined;
   MyProfile: undefined;
   modal: undefined;
-  '(tabs)': undefined;
+  "(tabs)": undefined;
+  Notifications: undefined;
 };
