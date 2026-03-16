@@ -9,23 +9,30 @@ export const fetchProfiles = async (req, res) => {
   const currentUserType = currentUser.userType;
   const targetUserType = currentUserType === "User" ? "Listener" : "User";
   const interactedProfiles = await Profile.find({ userId: ownUserId }).select(
-    "otherUserId"
+    "otherUserId",
   );
   const interactedUserIds = interactedProfiles.map(
-    (profile) => profile.otherUserId
+    (profile) => profile.otherUserId,
   );
+
+  // Get the current user's blocked list
+  const currentUserFull = await User.findById(ownUserId).select("blockedUsers");
+  const blockedByMe =
+    currentUserFull?.blockedUsers?.map((id) => id.toString()) || [];
 
   let profiles;
 
   if (currentUserType === "User") {
     profiles = await User.find({
       _id: {
-        $nin: [...interactedUserIds, ownUserId],
+        $nin: [...interactedUserIds, ownUserId, ...blockedByMe],
       },
       userType: targetUserType,
+      // Also exclude users who have blocked the current user
+      blockedUsers: { $nin: [ownUserId] },
     })
       .select(
-        "-refreshToken -__v -createdAt -updatedAt -mobileNumber -password"
+        "-refreshToken -__v -createdAt -updatedAt -mobileNumber -password -blockedUsers",
       )
       .lean(); // Use lean() for better performance
 
@@ -61,23 +68,27 @@ export const fetchProfiles = async (req, res) => {
     }).select("userId");
 
     const userIdsWhoAcceptedMe = usersWhoAcceptedMe.map(
-      (profile) => profile.userId
+      (profile) => profile.userId,
     );
 
     console.log(
       "🎯 Users who accepted this Listener:",
-      userIdsWhoAcceptedMe.length
+      userIdsWhoAcceptedMe.length,
     );
 
     // Now filter: show only those Users, excluding ones the Listener already interacted with
     profiles = await User.find({
       _id: {
         $in: userIdsWhoAcceptedMe, // Must be in the list of users who accepted
-        $nin: interactedUserIds, // Exclude ones already interacted with
+        $nin: [...interactedUserIds, ...blockedByMe], // Exclude interacted and blocked
       },
       userType: targetUserType, // "User"
+      // Also exclude users who have blocked the current listener
+      blockedUsers: { $nin: [ownUserId] },
     })
-      .select("-refreshToken -__v -createdAt -updatedAt -mobileNumber")
+      .select(
+        "-refreshToken -__v -createdAt -updatedAt -mobileNumber -blockedUsers",
+      )
       .lean(); // Use lean() to get plain objects
 
     // Attach pre-match messages to each profile
@@ -91,7 +102,7 @@ export const fetchProfiles = async (req, res) => {
         profile.preMatchMessage = profileRecord.preMatchMessage;
         console.log(
           `📬 Attached pre-match message from ${profile.name}:`,
-          profileRecord.preMatchMessage
+          profileRecord.preMatchMessage,
         );
       }
     }
@@ -103,7 +114,7 @@ export const fetchProfiles = async (req, res) => {
 export const fetchMyProfile = async (req, res) => {
   const ownUserId = req.user._id;
   const myProfile = await User.findById(ownUserId).select(
-    "-refreshToken -__v -createdAt -updatedAt -mobileNumber"
+    "-refreshToken -__v -createdAt -updatedAt -mobileNumber",
   );
   res.status(200).send(myProfile);
 };
@@ -136,7 +147,7 @@ export const debugAllProfiles = async (req, res) => {
         (p) =>
           p.Status === "accepted" &&
           p.userId?._id.toString() === profile.otherUserId?._id.toString() &&
-          p.otherUserId?._id.toString() === profile.userId?._id.toString()
+          p.otherUserId?._id.toString() === profile.userId?._id.toString(),
       );
 
       if (reverseMatch) {
@@ -218,7 +229,7 @@ export const acceptProfile = async (req, res) => {
         await sendPushNotification(
           otherUserId,
           "Listener Matched 🎧",
-          "A listener has accepted your invite. You can start chatting now!"
+          "A listener has accepted your invite. You can start chatting now!",
         );
       }
     }

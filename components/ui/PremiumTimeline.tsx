@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { Dimensions, FlatList, StyleSheet, Text, View } from "react-native";
 import Animated, {
   Easing,
   Extrapolate,
@@ -12,11 +12,15 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
-const STEP_SIZE = 80;
-const LINE_WIDTH = 4;
-const STEP_SPACING = 120;
+const STEP_SIZE = 56;
+const LINE_HEIGHT = 3;
+const STEP_SPACING = 90;
+const ITEM_WIDTH = STEP_SIZE + STEP_SPACING;
 const ANIMATION_DURATION = 600;
 const BEAM_DURATION = 800;
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+// Padding so that the circle center of the first/last item can land at screen center
+const SIDE_PADDING = (SCREEN_WIDTH - STEP_SIZE) / 2;
 
 interface FeatureStepProps {
   index: number;
@@ -25,7 +29,7 @@ interface FeatureStepProps {
     icon: keyof typeof Ionicons.glyphMap;
     title: string;
   };
-  isLeft: boolean;
+  isTop: boolean;
   totalSteps: number;
 }
 
@@ -33,12 +37,12 @@ const FeatureStep = ({
   index,
   currentStep,
   stepData,
-  isLeft,
+  isTop,
   totalSteps,
 }: FeatureStepProps) => {
   const opacity = useSharedValue(0);
   const scale = useSharedValue(0);
-  const translateX = useSharedValue(isLeft ? -50 : 50);
+  const translateY = useSharedValue(isTop ? -30 : 30);
 
   useEffect(() => {
     if (index <= currentStep) {
@@ -56,7 +60,7 @@ const FeatureStep = ({
           easing: Easing.out(Easing.back(1.5)),
         }),
       );
-      translateX.value = withDelay(
+      translateY.value = withDelay(
         index * BEAM_DURATION,
         withTiming(0, {
           duration: ANIMATION_DURATION,
@@ -76,7 +80,7 @@ const FeatureStep = ({
   const contentAnimatedStyle = useAnimatedStyle(() => {
     return {
       opacity: opacity.value,
-      transform: [{ translateX: translateX.value }],
+      transform: [{ translateY: translateY.value }],
     };
   });
 
@@ -97,36 +101,36 @@ const FeatureStep = ({
   }, [currentStep, index]);
 
   const beamAnimatedStyle = useAnimatedStyle(() => {
-    const height = interpolate(
+    const width = interpolate(
       beamProgress.value,
       [0, 1],
       [0, STEP_SPACING],
       Extrapolate.CLAMP,
     );
     return {
-      height,
+      width,
     };
   });
 
   return (
     <View style={styles.stepWrapper}>
-      <View style={styles.stepRow}>
-        {/* Content on left side */}
-        <View style={styles.contentLeft}>
-          {isLeft && (
+      <View style={styles.stepColumn}>
+        {/* Content above */}
+        <View style={styles.contentTop}>
+          {isTop && (
             <Animated.View style={[styles.textContainer, contentAnimatedStyle]}>
               <Text style={styles.featureTitle}>{stepData.title}</Text>
             </Animated.View>
           )}
         </View>
 
-        {/* Center line and step circle */}
-        <View style={styles.centerColumn}>
+        {/* Circle and horizontal beam */}
+        <View style={styles.centerRow}>
           <Animated.View style={[styles.step, stepAnimatedStyle]}>
-            <Ionicons name={stepData.icon} size={36} color="#FFFFFF" />
+            <Ionicons name={stepData.icon} size={24} color="#FFFFFF" />
           </Animated.View>
 
-          {/* Beam of Light - Vertical Line */}
+          {/* Beam of Light - Horizontal Line */}
           {index < totalSteps - 1 && (
             <View style={styles.beamContainer}>
               <View style={styles.lineBackground} />
@@ -134,7 +138,7 @@ const FeatureStep = ({
                 <LinearGradient
                   colors={["#a855f7", "#c084fc", "#7c3aed"]}
                   start={{ x: 0, y: 0 }}
-                  end={{ x: 0, y: 1 }}
+                  end={{ x: 1, y: 0 }}
                   style={styles.beam}
                 />
               </Animated.View>
@@ -142,9 +146,9 @@ const FeatureStep = ({
           )}
         </View>
 
-        {/* Content on right side */}
-        <View style={styles.contentRight}>
-          {!isLeft && (
+        {/* Content below */}
+        <View style={styles.contentBottom}>
+          {!isTop && (
             <Animated.View style={[styles.textContainer, contentAnimatedStyle]}>
               <Text style={styles.featureTitle}>{stepData.title}</Text>
             </Animated.View>
@@ -157,6 +161,7 @@ const FeatureStep = ({
 
 const PremiumTimeline = () => {
   const [currentStep, setCurrentStep] = useState(-1);
+  const flatListRef = useRef<FlatList>(null);
 
   const features = [
     {
@@ -198,61 +203,91 @@ const PremiumTimeline = () => {
     return () => clearTimeout(timer);
   }, []);
 
+  // Auto-scroll to follow the animation, centering each icon
+  useEffect(() => {
+    if (currentStep < 0) return;
+
+    const timers: ReturnType<typeof setTimeout>[] = [];
+
+    for (let i = 0; i <= currentStep; i++) {
+      const timer = setTimeout(
+        () => {
+          // Scroll so that the circle center of item i is at screen center
+          const scrollX = i * ITEM_WIDTH;
+          flatListRef.current?.scrollToOffset({
+            offset: scrollX,
+            animated: true,
+          });
+        },
+        i * BEAM_DURATION + ANIMATION_DURATION * 0.4,
+      );
+      timers.push(timer);
+    }
+
+    return () => {
+      timers.forEach(clearTimeout);
+    };
+  }, [currentStep]);
+
+  const renderItem = ({
+    item,
+    index,
+  }: {
+    item: (typeof features)[0];
+    index: number;
+  }) => (
+    <FeatureStep
+      index={index}
+      currentStep={currentStep}
+      stepData={item}
+      isTop={index % 2 === 0}
+      totalSteps={features.length}
+    />
+  );
+
+  // Pre-compute snap offsets so each circle center lands at screen center
+  const snapOffsets = features.map((_, i) => i * ITEM_WIDTH);
+
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.scrollContent}
-      showsVerticalScrollIndicator={false}
-    >
-      <View style={styles.timelineContainer}>
-        {features.map((feature, index) => (
-          <FeatureStep
-            key={index}
-            index={index}
-            currentStep={currentStep}
-            stepData={feature}
-            isLeft={index % 2 === 0}
-            totalSteps={features.length}
-          />
-        ))}
-      </View>
-    </ScrollView>
+    <View style={styles.container}>
+      <FlatList
+        ref={flatListRef}
+        data={features}
+        renderItem={renderItem}
+        keyExtractor={(_, index) => index.toString()}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        snapToOffsets={snapOffsets}
+        decelerationRate="fast"
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingHorizontal: SIDE_PADDING },
+        ]}
+      />
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     backgroundColor: "#000000ff",
   },
   scrollContent: {
-    paddingVertical: 80,
-    paddingBottom: 120,
-  },
-  timelineContainer: {
-    width: "100%",
-    paddingHorizontal: 24,
+    paddingVertical: 20,
     alignItems: "center",
   },
   stepWrapper: {
-    width: "100%",
-    maxWidth: 700,
-    marginBottom: 20,
+    width: ITEM_WIDTH,
+    alignItems: "flex-start",
+    paddingVertical: 40,
   },
-  stepRow: {
+  stepColumn: {
+    alignItems: "center",
+    width: STEP_SIZE,
+  },
+  centerRow: {
     flexDirection: "row",
     alignItems: "center",
-    width: "100%",
-    minHeight: STEP_SPACING,
-    justifyContent: "center",
-  },
-  centerColumn: {
-    alignItems: "center",
-    width: STEP_SIZE + 20,
-    zIndex: 10,
-    position: "absolute",
-    left: "50%",
-    marginLeft: -(STEP_SIZE + 20) / 2,
   },
   step: {
     width: STEP_SIZE,
@@ -264,56 +299,63 @@ const styles = StyleSheet.create({
     shadowColor: "#a855f7",
     shadowOffset: {
       width: 0,
-      height: 8,
+      height: 4,
     },
     shadowOpacity: 0.6,
-    shadowRadius: 12,
+    shadowRadius: 10,
     elevation: 8,
-    borderWidth: 4,
+    borderWidth: 3,
     borderColor: "#a855f7",
+    zIndex: 10,
   },
-  contentLeft: {
-    flex: 1,
-    paddingRight: (STEP_SIZE + 20) / 2 + 20,
-    alignItems: "flex-end",
-    justifyContent: "center",
-    minHeight: STEP_SPACING,
+  contentTop: {
+    height: 48,
+    justifyContent: "flex-end",
+    alignItems: "center",
+    marginBottom: 10,
+    width: STEP_SIZE + 40,
+    marginLeft: -20,
   },
-  contentRight: {
-    flex: 1,
-    paddingLeft: (STEP_SIZE + 20) / 2 + 20,
-    alignItems: "flex-start",
-    justifyContent: "center",
-    minHeight: STEP_SPACING,
+  contentBottom: {
+    height: 48,
+    justifyContent: "flex-start",
+    alignItems: "center",
+    marginTop: 10,
+    width: STEP_SIZE + 40,
+    marginLeft: -20,
   },
   textContainer: {
-    paddingVertical: 8,
+    alignItems: "center",
   },
   featureTitle: {
-    fontSize: 14,
+    fontSize: 11,
     fontWeight: "600",
     color: "#FFFFFF",
+    textAlign: "center",
+    lineHeight: 15,
   },
   beamContainer: {
     position: "absolute",
-    left: STEP_SIZE / 2 - LINE_WIDTH / 2 + 10,
-    top: STEP_SIZE,
-    width: LINE_WIDTH,
-    height: STEP_SPACING,
+    left: STEP_SIZE,
+    top: STEP_SIZE / 2 - LINE_HEIGHT / 2,
+    height: LINE_HEIGHT,
+    width: STEP_SPACING,
     zIndex: 1,
   },
   lineBackground: {
     position: "absolute",
     width: "100%",
     height: "100%",
-    backgroundColor: "#000000ff",
+    backgroundColor: "#1a1a2e",
+    borderRadius: LINE_HEIGHT / 2,
   },
   beamWrapper: {
-    width: "100%",
+    height: "100%",
     overflow: "hidden",
+    borderRadius: LINE_HEIGHT / 2,
   },
   beam: {
-    width: "100%",
+    width: STEP_SPACING,
     height: "100%",
   },
 });

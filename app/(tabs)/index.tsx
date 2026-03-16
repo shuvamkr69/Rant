@@ -428,6 +428,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: "-12%",
     width: "100%",
+    paddingBottom: 95,
   },
   card: {
     height: SCREEN_HEIGHT * 0.8,
@@ -603,6 +604,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 20,
+    paddingBottom: 95,
   },
   notFoundGif: {
     width: "60%",

@@ -32,7 +32,7 @@ export const initializeSocket = (server) => {
 
       console.log(
         "🔐 Socket auth - Token (first 20 chars):",
-        token.substring(0, 20) + "..."
+        token.substring(0, 20) + "...",
       );
 
       const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
@@ -71,7 +71,7 @@ export const initializeSocket = (server) => {
         const currentUserId = userId;
 
         console.log(
-          `🚪 User ${currentUserId} joining room with ${otherUserId}`
+          `🚪 User ${currentUserId} joining room with ${otherUserId}`,
         );
 
         // Verify they are matched
@@ -95,7 +95,7 @@ export const initializeSocket = (server) => {
         console.log(
           `👤 Other user ${otherUserId} is ${
             userSockets.has(otherUserId.toString()) ? "ONLINE" : "OFFLINE"
-          }`
+          }`,
         );
 
         // Check if there's already an active session for this room
@@ -129,7 +129,7 @@ export const initializeSocket = (server) => {
 
             activeSessions.set(roomId, sessionData);
             console.log(
-              `📊 Created session metadata for room ${roomId}, waiting for both users...`
+              `📊 Created session metadata for room ${roomId}, waiting for both users...`,
             );
           }
         } else {
@@ -138,13 +138,13 @@ export const initializeSocket = (server) => {
           console.log(`👤 Adding user ${currentUserId} to room ${roomId}`);
           console.log(
             `👥 Current participants:`,
-            Array.from(sessionData.participants)
+            Array.from(sessionData.participants),
           );
           console.log(
-            `📊 Participants count: ${sessionData.participants.size}`
+            `📊 Participants count: ${sessionData.participants.size}`,
           );
           console.log(
-            `🔍 Both users present flag: ${sessionData.bothUsersPresent}`
+            `🔍 Both users present flag: ${sessionData.bothUsersPresent}`,
           );
 
           // Check if both users are now present
@@ -169,11 +169,11 @@ export const initializeSocket = (server) => {
 
             sessionData.sessionId = session._id;
             console.log(
-              `🎉 BOTH USERS PRESENT! Session ${session._id} started for room ${roomId}`
+              `🎉 BOTH USERS PRESENT! Session ${session._id} started for room ${roomId}`,
             );
             console.log(
               `👥 Both participants:`,
-              Array.from(sessionData.participants)
+              Array.from(sessionData.participants),
             );
 
             // Notify both users that session has started
@@ -187,7 +187,7 @@ export const initializeSocket = (server) => {
             // Resume session if it was paused (both users were present before)
             const now = new Date();
             const pauseDuration = Math.floor(
-              (now - sessionData.pausedAt) / 1000
+              (now - sessionData.pausedAt) / 1000,
             );
             sessionData.totalPausedTime += pauseDuration;
             sessionData.lastResumeTime = now;
@@ -201,7 +201,7 @@ export const initializeSocket = (server) => {
             });
 
             console.log(
-              `▶️ Session resumed for room ${roomId} after ${pauseDuration}s pause`
+              `▶️ Session resumed for room ${roomId} after ${pauseDuration}s pause`,
             );
 
             // Notify both users that session has resumed
@@ -212,7 +212,7 @@ export const initializeSocket = (server) => {
           }
 
           console.log(
-            `📊 User added to session for room ${roomId}. Participants: ${sessionData.participants.size}/2`
+            `📊 User added to session for room ${roomId}. Participants: ${sessionData.participants.size}/2`,
           );
         }
 
@@ -237,7 +237,7 @@ export const initializeSocket = (server) => {
         console.log(
           `📤 Sent room_joined to ${currentUserId}: bothUsersPresent=${
             finalSessionData?.bothUsersPresent
-          }, waitingForOtherUser=${!finalSessionData?.bothUsersPresent}`
+          }, waitingForOtherUser=${!finalSessionData?.bothUsersPresent}`,
         );
 
         // Check if the other user is a regular User and has exhausted their word limit
@@ -255,7 +255,7 @@ export const initializeSocket = (server) => {
               const now = new Date();
               const daysSinceReset = Math.floor(
                 (now - new Date(otherUserStats.lastWordResetDate)) /
-                  (1000 * 60 * 60 * 24)
+                  (1000 * 60 * 60 * 24),
               );
 
               let wordsRemaining =
@@ -275,7 +275,7 @@ export const initializeSocket = (server) => {
                   message: `${otherUser.name} has exhausted their monthly word limit.`,
                 });
                 console.log(
-                  `⚠️ Notified Listener ${currentUserId} that User ${otherUserId} has no words left`
+                  `⚠️ Notified Listener ${currentUserId} that User ${otherUserId} has no words left`,
                 );
               }
             }
@@ -298,7 +298,7 @@ export const initializeSocket = (server) => {
               const now = new Date();
               const daysSinceReset = Math.floor(
                 (now - new Date(currentUserStats.lastWordResetDate)) /
-                  (1000 * 60 * 60 * 24)
+                  (1000 * 60 * 60 * 24),
               );
 
               let wordsRemaining =
@@ -320,7 +320,7 @@ export const initializeSocket = (server) => {
                     message: `${currentUser.name} has exhausted their monthly word limit.`,
                   });
                   console.log(
-                    `⚠️ Notified Listener ${otherUserId} that User ${currentUserId} has no words left`
+                    `⚠️ Notified Listener ${otherUserId} that User ${currentUserId} has no words left`,
                   );
                 }
               }
@@ -352,7 +352,7 @@ export const initializeSocket = (server) => {
           sessionData.participants.delete(currentUserId.toString());
 
           console.log(
-            `📊 Remaining participants: ${sessionData.participants.size}`
+            `📊 Remaining participants: ${sessionData.participants.size}`,
           );
 
           // Only pause/end if session was actually started (both users were present)
@@ -360,7 +360,7 @@ export const initializeSocket = (server) => {
             if (sessionData.participants.size === 0) {
               // Both users left - end the session
               console.log(
-                `🏁 All users left room, ending session for ${roomId}`
+                `🏁 All users left room, ending session for ${roomId}`,
               );
               await endSession(roomId, sessionData, "completed");
             } else if (
@@ -385,7 +385,7 @@ export const initializeSocket = (server) => {
             // Just clean up if both users are gone
             if (sessionData.participants.size === 0) {
               console.log(
-                `🗑️ Cleaning up unstarted session for room ${roomId}`
+                `🗑️ Cleaning up unstarted session for room ${roomId}`,
               );
               activeSessions.delete(roomId);
             }
@@ -404,7 +404,7 @@ export const initializeSocket = (server) => {
         const roomId = [currentUserId.toString(), otherUserId].sort().join("_");
 
         console.log(
-          `🛑 User ${currentUserId} explicitly ending session in room ${roomId}`
+          `🛑 User ${currentUserId} explicitly ending session in room ${roomId}`,
         );
 
         // Check if there's an active session for this room
@@ -412,7 +412,7 @@ export const initializeSocket = (server) => {
 
         if (sessionData && sessionData.bothUsersPresent) {
           console.log(
-            `📊 Ending session ${sessionData.sessionId} for room ${roomId}`
+            `📊 Ending session ${sessionData.sessionId} for room ${roomId}`,
           );
 
           // End the session immediately
@@ -426,7 +426,7 @@ export const initializeSocket = (server) => {
               endedBy: currentUserId.toString(),
             });
             console.log(
-              `📢 Notified user ${otherUserId} that session was ended by ${currentUserId}`
+              `📢 Notified user ${otherUserId} that session was ended by ${currentUserId}`,
             );
           }
 
@@ -484,7 +484,7 @@ export const initializeSocket = (server) => {
           const now = new Date();
           const lastReset = new Date(userStats.lastWordResetDate);
           const daysSinceReset = Math.floor(
-            (now - lastReset) / (1000 * 60 * 60 * 24)
+            (now - lastReset) / (1000 * 60 * 60 * 24),
           );
 
           // Reset if it's been 30+ days
@@ -500,7 +500,7 @@ export const initializeSocket = (server) => {
           if (wordsAfterSend > userStats.monthlyWordLimit) {
             const wordsRemaining = Math.max(
               0,
-              userStats.monthlyWordLimit - userStats.wordsUsedThisMonth
+              userStats.monthlyWordLimit - userStats.wordsUsedThisMonth,
             );
             socket.emit("word_limit_exceeded", {
               message: `Monthly word limit reached! You have ${wordsRemaining} words remaining.`,
@@ -527,7 +527,7 @@ export const initializeSocket = (server) => {
           userStats.messagesSent += 1;
           await userStats.save();
           console.log(
-            `📊 User word count updated: ${userStats.wordsUsedThisMonth}/${userStats.monthlyWordLimit}`
+            `📊 User word count updated: ${userStats.wordsUsedThisMonth}/${userStats.monthlyWordLimit}`,
           );
 
           // Send updated word count to user
@@ -554,13 +554,13 @@ export const initializeSocket = (server) => {
           if (!listenerStats) {
             listenerStats = await ListenerStats.create({ userId: senderId });
             console.log(
-              `✅ [Socket] Created new ListenerStats for ${senderId}`
+              `✅ [Socket] Created new ListenerStats for ${senderId}`,
             );
           }
 
           // Check if this user is already in the uniqueUsersListenedTo array
           const alreadyListened = listenerStats.uniqueUsersListenedTo.some(
-            (userId) => userId.toString() === receiverId.toString()
+            (userId) => userId.toString() === receiverId.toString(),
           );
 
           if (!alreadyListened) {
@@ -568,7 +568,7 @@ export const initializeSocket = (server) => {
             listenerStats.uniqueUsersListenedTo.push(receiverId);
             await listenerStats.save();
             console.log(
-              `✅ [Socket] Listener ${senderId} now listening to ${listenerStats.uniqueUsersListenedTo.length} unique users`
+              `✅ [Socket] Listener ${senderId} now listening to ${listenerStats.uniqueUsersListenedTo.length} unique users`,
             );
           }
         }
@@ -605,7 +605,7 @@ export const initializeSocket = (server) => {
           await sendPushNotification(
             receiverId,
             `New message from ${senderUser.name}`,
-            messagePreview
+            messagePreview,
           );
         }
       } catch (error) {
@@ -644,7 +644,7 @@ export const initializeSocket = (server) => {
         const { messageIds } = data;
         await Message.updateMany(
           { _id: { $in: messageIds }, receiverId: userId },
-          { isRead: true }
+          { isRead: true },
         );
 
         console.log(`✅ Marked ${messageIds.length} messages as read`);
@@ -665,7 +665,7 @@ export const initializeSocket = (server) => {
         try {
           userSockets.delete(disconnectedUserId);
           console.log(
-            `❌ User disconnected (grace period expired): ${disconnectedUserId}`
+            `❌ User disconnected (grace period expired): ${disconnectedUserId}`,
           );
           console.log(`👥 Total connected users: ${userSockets.size}`);
 
@@ -673,31 +673,31 @@ export const initializeSocket = (server) => {
           for (const [roomId, sessionData] of activeSessions.entries()) {
             console.log(
               `🔍 Checking session in room ${roomId}, participants:`,
-              Array.from(sessionData.participants)
+              Array.from(sessionData.participants),
             );
 
             if (sessionData.participants.has(disconnectedUserId)) {
               console.log(
-                `✅ Found session involving ${disconnectedUserId} in room ${roomId}`
+                `✅ Found session involving ${disconnectedUserId} in room ${roomId}`,
               );
               sessionData.participants.delete(disconnectedUserId);
 
               console.log(
                 `📊 Remaining participants in room ${roomId}:`,
-                sessionData.participants.size
+                sessionData.participants.size,
               );
 
               // Only end session if it was actually started (both users were present)
               if (sessionData.bothUsersPresent) {
                 console.log(
-                  `🏁 Ending session for room ${roomId} due to user disconnect`
+                  `🏁 Ending session for room ${roomId} due to user disconnect`,
                 );
                 await endSession(roomId, sessionData, "completed");
               } else {
                 // Session never started, just clean up if no one is left
                 if (sessionData.participants.size === 0) {
                   console.log(
-                    `🗑️ Cleaning up unstarted session for room ${roomId}`
+                    `🗑️ Cleaning up unstarted session for room ${roomId}`,
                   );
                   activeSessions.delete(roomId);
                 }
@@ -713,7 +713,7 @@ export const initializeSocket = (server) => {
 
       disconnectTimers.set(disconnectedUserId, timer);
       console.log(
-        `⏰ Started 30-second grace period timer for ${disconnectedUserId}`
+        `⏰ Started 30-second grace period timer for ${disconnectedUserId}`,
       );
     });
   });
@@ -747,7 +747,7 @@ const endSession = async (roomId, sessionData, status = "completed") => {
     const totalDuration = Math.floor((endTime - startTime) / 1000);
     const activeDurationInSeconds = Math.max(
       0,
-      totalDuration - finalPausedTime
+      totalDuration - finalPausedTime,
     );
 
     console.log(`⏱️ Ending session ${sessionId}`);
@@ -779,11 +779,11 @@ const endSession = async (roomId, sessionData, status = "completed") => {
         status,
         statsUpdated: true,
       },
-      { new: true }
+      { new: true },
     );
 
     console.log(
-      `💾 Session ${sessionId} updated in DB with active duration: ${activeDurationInSeconds}s`
+      `💾 Session ${sessionId} updated in DB with active duration: ${activeDurationInSeconds}s`,
     );
 
     // Update listener stats
@@ -795,10 +795,10 @@ const endSession = async (roomId, sessionData, status = "completed") => {
 
     // Add user to uniqueUsersListenedTo if not already there
     const alreadyListened = listenerStats.uniqueUsersListenedTo.some(
-      (uid) => uid.toString() === userId.toString()
+      (uid) => uid.toString() === userId.toString(),
     );
 
-    // Minimum duration required for session to count (30 minutes = 37 seconds)
+    // Minimum duration required for session to count (in seconds, set to 37s for testing - change to 1800 for 30 minutes in production)
     const MIN_SESSION_DURATION = 37;
     const sessionCountsTowardsStats =
       activeDurationInSeconds >= MIN_SESSION_DURATION;
@@ -819,16 +819,16 @@ const endSession = async (roomId, sessionData, status = "completed") => {
     const updatedListenerStats = await ListenerStats.findByIdAndUpdate(
       listenerStats._id,
       updateData,
-      { new: true }
+      { new: true },
     );
 
     console.log(
-      `📊 Listener stats updated: sessionsConducted=${updatedListenerStats.sessionsConducted}, totalChatTime=${updatedListenerStats.totalChatTime}s`
+      `📊 Listener stats updated: sessionsConducted=${updatedListenerStats.sessionsConducted}, totalChatTime=${updatedListenerStats.totalChatTime}s`,
     );
     console.log(
       `   ℹ️ Session duration: ${activeDurationInSeconds}s (${
         sessionCountsTowardsStats ? "COUNTS" : "DOES NOT COUNT"
-      } towards sessionsConducted - minimum ${MIN_SESSION_DURATION}s required)`
+      } towards sessionsConducted - minimum ${MIN_SESSION_DURATION}s required)`,
     );
 
     // Update user stats
@@ -848,14 +848,14 @@ const endSession = async (roomId, sessionData, status = "completed") => {
           totalSessionTime: activeDurationInSeconds,
         },
       },
-      { new: true }
+      { new: true },
     );
 
     console.log(
-      `📊 User stats updated: sessionsCompleted=${updatedUserStats.sessionsCompleted}, totalSessionTime=${updatedUserStats.totalSessionTime}s`
+      `📊 User stats updated: sessionsCompleted=${updatedUserStats.sessionsCompleted}, totalSessionTime=${updatedUserStats.totalSessionTime}s`,
     );
     console.log(
-      `✅ Stats successfully updated - Listener: ${listenerId}, User: ${userId}, Active Duration: ${activeDurationInSeconds}s`
+      `✅ Stats successfully updated - Listener: ${listenerId}, User: ${userId}, Active Duration: ${activeDurationInSeconds}s`,
     );
 
     // Emit session_ended event to both parties
@@ -880,7 +880,7 @@ const endSession = async (roomId, sessionData, status = "completed") => {
       await sendPushNotification(
         userId,
         "Session Ended",
-        "Your session has ended. Thanks for being part of the conversation."
+        "Your session has ended. Thanks for being part of the conversation.",
       );
     }
 
@@ -891,7 +891,7 @@ const endSession = async (roomId, sessionData, status = "completed") => {
       await sendPushNotification(
         listenerId,
         "Session Ended",
-        "Your session has ended. Thanks for being part of the conversation."
+        "Your session has ended. Thanks for being part of the conversation.",
       );
     }
 
@@ -933,7 +933,7 @@ const verifyMatch = async (userId1, userId2) => {
 
   if (!isMatched) {
     const allAccepted = await Profile.find({ Status: "accepted" }).select(
-      "userId otherUserId Status"
+      "userId otherUserId Status",
     );
     allAccepted.forEach((p, i) => {});
   }

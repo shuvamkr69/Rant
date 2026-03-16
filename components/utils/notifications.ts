@@ -67,13 +67,18 @@ export async function registerForPushNotificationsAsync() {
       } catch (tokenError: any) {
         console.error("❌ Error getting Expo push token:", tokenError);
         console.error("❌ Token error details:", tokenError?.message);
-        
+
         // If it's a Firebase error, it might be a configuration issue
-        if (tokenError?.message?.includes("Firebase") || tokenError?.message?.includes("firebase")) {
+        if (
+          tokenError?.message?.includes("Firebase") ||
+          tokenError?.message?.includes("firebase")
+        ) {
           console.warn("⚠️ Firebase-related error detected");
-          console.warn("⚠️ This might be due to google-services.json configuration");
+          console.warn(
+            "⚠️ This might be due to google-services.json configuration",
+          );
         }
-        
+
         throw tokenError; // Re-throw to be caught by outer catch
       }
     } else {
@@ -86,14 +91,16 @@ export async function registerForPushNotificationsAsync() {
     console.error("❌ Error type:", error?.constructor?.name);
     console.error("❌ Error message:", error?.message);
     console.error("❌ Full error:", JSON.stringify(error, null, 2));
-    
+
     // Handle Firebase not initialized error gracefully
-    if (error?.message?.includes("FirebaseApp is not initialized") || 
-        error?.message?.includes("Firebase")) {
+    if (
+      error?.message?.includes("FirebaseApp is not initialized") ||
+      error?.message?.includes("Firebase")
+    ) {
       console.warn("⚠️ Firebase not configured. Push notifications disabled.");
       console.warn("⚠️ Follow FIREBASE_SETUP.md to enable push notifications.");
     }
-    
+
     return null;
   }
 }
@@ -101,28 +108,33 @@ export async function registerForPushNotificationsAsync() {
 export async function sendPushTokenToBackend(token: string) {
   try {
     console.log("🚀 [Push Token] Sending to backend:", token);
-    console.log("🚀 [Push Token] Backend URL:", process.env.EXPO_PUBLIC_BACKEND_URL);
-    
+    console.log(
+      "🚀 [Push Token] Backend URL:",
+      process.env.EXPO_PUBLIC_BACKEND_URL,
+    );
+
     // Import here to get fresh token value
     const { getAccessToken } = await import("./tokenStorage");
     const accessToken = getAccessToken();
     console.log("🔑 [Push Token] Access token available:", !!accessToken);
-    
+
     if (!accessToken) {
-      console.error("❌ [Push Token] No access token found! Cannot send push token.");
+      console.error(
+        "❌ [Push Token] No access token found! Cannot send push token.",
+      );
       return false;
     }
-    
+
     const response = await api.post("/api/v1/users/update-push-token", {
       pushToken: token,
     });
-    
+
     console.log("✅ [Push Token] Successfully sent to backend:", response.data);
     return true;
   } catch (error: any) {
     console.error("❌ [Push Token] Failed to send to backend");
     console.error("❌ [Push Token] Error message:", error?.message);
-    
+
     if (error.response) {
       console.error("❌ [Push Token] Response status:", error.response.status);
       console.error("❌ [Push Token] Response data:", error.response.data);
@@ -132,7 +144,7 @@ export async function sendPushTokenToBackend(token: string) {
     } else {
       console.error("❌ [Push Token] Error details:", error);
     }
-    
+
     return false;
   }
 }
@@ -140,28 +152,32 @@ export async function sendPushTokenToBackend(token: string) {
 export async function removePushTokenFromBackend() {
   try {
     console.log("🗑️ Attempting to remove push token from backend...");
-    
+
     // Create a promise that times out after 5 seconds
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Request timeout')), 5000)
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Request timeout")), 5000),
     );
-    
+
     const apiPromise = api.post("/api/v1/users/remove-push-token");
-    
+
     // Race between the API call and timeout
     await Promise.race([apiPromise, timeoutPromise]);
-    
+
     console.log("✅ Push token removed from backend");
   } catch (error: any) {
     // Silently handle errors - this is a best-effort operation during logout
-    const errorMsg = error?.response?.data?.message || error?.message || 'Unknown error';
-    console.warn("⚠️ Could not remove push token from backend (non-critical):", errorMsg);
-    
+    const errorMsg =
+      error?.response?.data?.message || error?.message || "Unknown error";
+    console.warn(
+      "⚠️ Could not remove push token from backend (non-critical):",
+      errorMsg,
+    );
+
     // Log more details for debugging but don't throw
     if (error?.response?.status) {
       console.warn(`⚠️ Backend returned status: ${error.response.status}`);
     }
-    
+
     // Don't rethrow - allow logout to continue even if this fails
   }
 }

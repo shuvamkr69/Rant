@@ -8,6 +8,11 @@ export const getMatches = async (req, res) => {
     const userId = req.user._id;
     console.log("🔍 Fetching matches for user:", userId);
 
+    // Get the current user's blocked list
+    const currentUser = await User.findById(userId).select("blockedUsers");
+    const blockedByMe =
+      currentUser?.blockedUsers?.map((id) => id.toString()) || [];
+
     const myAcceptedProfiles = await Profile.find({
       userId: userId,
       Status: "accepted",
@@ -24,13 +29,19 @@ export const getMatches = async (req, res) => {
 
     const mutualMatchIds = myAcceptedUserIds.filter((id) =>
       othersAcceptedMeIds.some(
-        (otherId) => otherId.toString() === id.toString()
-      )
+        (otherId) => otherId.toString() === id.toString(),
+      ),
     );
 
     const matches = await User.find({
-      _id: { $in: mutualMatchIds },
-    }).select("-refreshToken -__v -mobileNumber");
+      _id: {
+        $in: mutualMatchIds,
+        // Exclude anyone the current user has blocked, and anyone who has blocked the current user
+        $nin: blockedByMe,
+      },
+      // Also exclude users who have blocked the current user
+      blockedUsers: { $nin: [userId] },
+    }).select("-refreshToken -__v -mobileNumber -blockedUsers");
     res.status(200).json({ matches });
   } catch (error) {
     console.error("❌ Error fetching matches:", error);
@@ -86,7 +97,7 @@ export const getChatHistory = async (req, res) => {
     // Mark messages as read
     await Message.updateMany(
       { senderId: otherUserId, receiverId: userId, isRead: false },
-      { isRead: true }
+      { isRead: true },
     );
 
     res.status(200).json({ messages, isPending: false });
@@ -122,22 +133,24 @@ export const sendMessage = async (req, res) => {
     // If sender is a Listener, check if this is their first message to this user
     if (senderUser.userType === "Listener") {
       let listenerStats = await ListenerStats.findOne({ userId: senderId });
-      
+
       // Create stats if they don't exist
       if (!listenerStats) {
         listenerStats = await ListenerStats.create({ userId: senderId });
       }
-      
+
       // Check if this user is already in the uniqueUsersListenedTo array
       const alreadyListened = listenerStats.uniqueUsersListenedTo.some(
-        (userId) => userId.toString() === receiverId.toString()
+        (userId) => userId.toString() === receiverId.toString(),
       );
 
       if (!alreadyListened) {
         // This is the first message to this user, add them to the array
         listenerStats.uniqueUsersListenedTo.push(receiverId);
         await listenerStats.save();
-        console.log(`✅ Listener ${senderId} now listening to ${listenerStats.uniqueUsersListenedTo.length} unique users`);
+        console.log(
+          `✅ Listener ${senderId} now listening to ${listenerStats.uniqueUsersListenedTo.length} unique users`,
+        );
       }
     }
 
@@ -153,7 +166,6 @@ export const sendMessage = async (req, res) => {
 };
 
 const verifyMatch = async (userId1, userId2) => {
-
   const user1AcceptedUser2 = await Profile.findOne({
     userId: userId1,
     otherUserId: userId2,

@@ -586,3 +586,72 @@ const generateAccessAndRefreshTokens = async (userId) => {
     throw new ApiError(500, "Refresh and Access Token generation failed");
   }
 };
+
+/**
+ * Block a user - adds them to the current user's blockedUsers list
+ * and removes all match records (Profile) between the two users.
+ */
+export const blockUser = async (req, res) => {
+  try {
+    const blockerId = req.user._id;
+    const { userId: blockedId } = req.params;
+
+    if (!blockedId) {
+      return res.status(400).json({ message: "User ID is required" });
+    }
+
+    if (blockerId.toString() === blockedId.toString()) {
+      return res.status(400).json({ message: "You cannot block yourself" });
+    }
+
+    const blockedUser = await User.findById(blockedId);
+    if (!blockedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Add to blocker's blockedUsers list if not already there
+    await User.findByIdAndUpdate(blockerId, {
+      $addToSet: { blockedUsers: blockedId },
+    });
+
+    // Remove all Profile (match) records between the two users so they
+    // no longer appear in each other's matches or swipe deck
+    const { Profile } = await import("../models/profile.model.js");
+    await Profile.deleteMany({
+      $or: [
+        { userId: blockerId, otherUserId: blockedId },
+        { userId: blockedId, otherUserId: blockerId },
+      ],
+    });
+
+    console.log(`🚫 User ${blockerId} blocked ${blockedId}`);
+
+    return res.status(200).json({
+      success: true,
+      message: `You have blocked ${blockedUser.name}`,
+    });
+  } catch (error) {
+    console.error("❌ Error blocking user:", error);
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
+  }
+};
+
+/**
+ * Get the list of users blocked by the current user
+ */
+export const getBlockedUsers = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id)
+      .select("blockedUsers")
+      .populate("blockedUsers", "name userType profileImage");
+
+    return res.status(200).json({ blockedUsers: user?.blockedUsers || [] });
+  } catch (error) {
+    console.error("❌ Error fetching blocked users:", error);
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
+  }
+};

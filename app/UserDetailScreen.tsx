@@ -176,7 +176,7 @@ const UserDetailScreen = () => {
           try {
             const pushToken = await registerForPushNotificationsAsync();
             console.log("🔔 [Signup] Push token received:", pushToken);
-            
+
             if (pushToken) {
               console.log("🔔 [Signup] Sending push token to backend...");
               const sent = await sendPushTokenToBackend(pushToken);
@@ -186,7 +186,9 @@ const UserDetailScreen = () => {
                 console.warn("⚠️ [Signup] Failed to send push token");
               }
             } else {
-              console.warn("⚠️ [Signup] Push token is null, not sending to backend");
+              console.warn(
+                "⚠️ [Signup] Push token is null, not sending to backend",
+              );
             }
           } catch (error) {
             console.error("❌ [Signup] Failed to register push token:", error);

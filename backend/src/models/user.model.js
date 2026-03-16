@@ -29,8 +29,14 @@ const userSchema = new mongoose.Schema(
     }, // Platform where subscription was purchased
     subscriptionProductId: { type: String }, // Product ID from store
     pushToken: { type: String, default: null }, // Expo push notification token
+    blockedUsers: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ], // List of user IDs that this user has blocked
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 userSchema.methods.generateAccessToken = function () {
@@ -43,7 +49,7 @@ userSchema.methods.generateAccessToken = function () {
     process.env.ACCESS_TOKEN_SECRET,
     {
       expiresIn: process.env.ACCESS_TOKEN_EXPIRY,
-    }
+    },
   );
 };
 userSchema.methods.generateRefreshToken = function () {
@@ -54,7 +60,7 @@ userSchema.methods.generateRefreshToken = function () {
     process.env.REFRESH_TOKEN_SECRET,
     {
       expiresIn: process.env.REFRESH_TOKEN_EXPIRY,
-    }
+    },
   );
 };
 export const User = mongoose.model("User", userSchema);

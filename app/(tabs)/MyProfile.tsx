@@ -199,11 +199,18 @@ export default function MyProfile() {
           backgroundColor: colors.cardBackground,
           opacity: fadeAnim,
           transform: [{ translateY: slideAnim }],
+          borderWidth: 1,
+          borderColor: colors.border || "rgba(255, 255, 255, 0.05)",
         },
       ]}
     >
-      <View style={styles.statIconContainer}>
-        <Ionicons name={item.icon as any} size={24} color={colors.tint} />
+      <View
+        style={[
+          styles.statIconContainer,
+          { backgroundColor: `${colors.tint}15` },
+        ]}
+      >
+        <Ionicons name={item.icon as any} size={22} color={colors.tint} />
       </View>
       <View style={styles.statContent}>
         <Text style={[styles.statLabel, { color: colors.icon }]}>
@@ -211,8 +218,16 @@ export default function MyProfile() {
         </Text>
         <Text style={[styles.statValue, { color: colors.text }]}>
           {item.value}
-          {item.suffix || ""}
+          {item.suffix && (
+            <Text style={[styles.statSuffix, { color: colors.icon }]}>
+              {" "}
+              {item.suffix}
+            </Text>
+          )}
         </Text>
+      </View>
+      <View style={[styles.statArrow, { backgroundColor: `${colors.tint}10` }]}>
+        <Ionicons name="trending-up" size={16} color={colors.tint} />
       </View>
     </Animated.View>
   );
@@ -242,58 +257,94 @@ export default function MyProfile() {
             style={[
               styles.profileHeader,
               {
+                backgroundColor: colors.cardBackground,
+                borderColor: colors.border,
                 opacity: fadeAnim,
                 transform: [{ translateY: slideAnim }],
               },
             ]}
           >
-            <View style={styles.profileImageContainer}>
-              {profileImage ? (
-                <Image
-                  source={{ uri: profileImage }}
-                  style={styles.profileImage}
-                  resizeMode="cover"
+            <View style={styles.profileImageWrapper}>
+              <View style={styles.profileImageContainer}>
+                {profileImage ? (
+                  <Image
+                    source={{ uri: profileImage }}
+                    style={styles.profileImage}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View
+                    style={[
+                      styles.profileImagePlaceholder,
+                      { backgroundColor: colors.cardBackground },
+                    ]}
+                  >
+                    <Ionicons name="person" size={60} color={colors.icon} />
+                  </View>
+                )}
+              </View>
+              {/* User Type Badge on Image */}
+              <View
+                style={[
+                  styles.userTypeBadgeOverlay,
+                  {
+                    backgroundColor: colors.background,
+                    borderColor:
+                      userType === "Listener" ? "#a855f7" : "#3b82f6",
+                  },
+                ]}
+              >
+                <Ionicons
+                  name={userType === "Listener" ? "headset" : "person"}
+                  size={16}
+                  color={userType === "Listener" ? "#a855f7" : "#3b82f6"}
                 />
-              ) : (
-                <View
+              </View>
+            </View>
+
+            <View style={styles.profileInfo}>
+              <Text style={[styles.profileName, { color: colors.text }]}>
+                {userProfileData?.name}
+              </Text>
+
+              {userProfileData?.email ? (
+                <Text style={[styles.profileEmail, { color: colors.icon }]}>
+                  {userProfileData.email}
+                </Text>
+              ) : null}
+
+              <View
+                style={[
+                  styles.userTypeBadge,
+                  {
+                    backgroundColor:
+                      userType === "Listener"
+                        ? "rgba(168, 85, 247, 0.1)"
+                        : "rgba(59, 130, 246, 0.1)",
+                    borderColor:
+                      userType === "Listener"
+                        ? "rgba(168, 85, 247, 0.3)"
+                        : "rgba(59, 130, 246, 0.3)",
+                  },
+                ]}
+              >
+                <Text
                   style={[
-                    styles.profileImagePlaceholder,
-                    { backgroundColor: colors.cardBackground },
+                    styles.userTypeText,
+                    { color: userType === "Listener" ? "#a855f7" : "#3b82f6" },
                   ]}
                 >
-                  <Ionicons name="person" size={60} color={colors.icon} />
-                </View>
+                  {userProfileData?.userType}
+                </Text>
+              </View>
+
+              {/* Quick Info */}
+              {userProfileData?.bio && (
+                <Text style={[styles.bioText, { color: colors.icon }]}>
+                  {userProfileData.bio}
+                </Text>
               )}
             </View>
-
-            <Text style={[styles.profileName, { color: colors.text }]}>
-              {userProfileData?.name}
-            </Text>
-
-            <View
-              style={[
-                styles.userTypeBadge,
-                { backgroundColor: colors.accent + "20" },
-              ]}
-            >
-              <Ionicons
-                name={
-                  userType === "Listener" ? "headset-outline" : "person-outline"
-                }
-                size={16}
-                color={colors.tint}
-              />
-              <Text style={[styles.userTypeText, { color: colors.tint }]}>
-                {userProfileData?.userType}
-              </Text>
-            </View>
-
-            {/* Quick Info */}
-            {userProfileData?.bio && (
-              <Text style={[styles.bioText, { color: colors.icon }]}>
-                {userProfileData.bio}
-              </Text>
-            )}
           </Animated.View>
 
           {/* Action Buttons */}
@@ -301,43 +352,73 @@ export default function MyProfile() {
             style={[
               styles.actionButtonsContainer,
               {
+                backgroundColor: colors.cardBackground,
+                borderColor: colors.border,
                 opacity: fadeAnim,
                 transform: [{ translateY: slideAnim }],
               },
             ]}
           >
             <TouchableOpacity
-              style={[
-                styles.actionButton,
-                { backgroundColor: colors.cardBackground },
-              ]}
-              onPress={() => router.push("/Settings")}
+              style={[styles.actionButton, styles.primaryActionButton]}
+              onPress={() => router.push("/EditProfile")}
             >
-              <Ionicons name="settings-outline" size={20} color={colors.text} />
-              <Text style={[styles.actionButtonText, { color: colors.text }]}>
-                Settings
-              </Text>
+              <View style={styles.actionButtonContent}>
+                <View
+                  style={[
+                    styles.actionButtonIconContainer,
+                    { backgroundColor: "rgba(168, 85, 247, 0.15)" },
+                  ]}
+                >
+                  <Ionicons name="create-outline" size={20} color="#a855f7" />
+                </View>
+                <Text style={styles.actionButtonLabel}>Edit Profile</Text>
+              </View>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[
-                styles.actionButton,
-                { backgroundColor: colors.cardBackground },
-              ]}
-              onPress={() => router.push("/EditProfile")}
+              style={[styles.actionButton, styles.secondaryActionButton]}
+              onPress={() => router.push("/Settings")}
             >
-              <Ionicons name="create-outline" size={20} color={colors.text} />
-              <Text style={[styles.actionButtonText, { color: colors.text }]}>
-                Edit Profile
-              </Text>
+              <View style={styles.actionButtonContent}>
+                <View
+                  style={[
+                    styles.actionButtonIconContainer,
+                    { backgroundColor: "rgba(107, 114, 128, 0.15)" },
+                  ]}
+                >
+                  <Ionicons name="settings-outline" size={20} color="#6b7280" />
+                </View>
+                <Text
+                  style={[styles.actionButtonLabel, { color: colors.icon }]}
+                >
+                  Settings
+                </Text>
+              </View>
             </TouchableOpacity>
           </Animated.View>
 
           {/* Stats Section */}
-          <View style={styles.statsSection}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Statistics
-            </Text>
+          <View
+            style={[
+              styles.statsSection,
+              {
+                backgroundColor: colors.cardBackground,
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <View style={styles.statsSectionHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                Your Statistics
+              </Text>
+              <View
+                style={[
+                  styles.statsDecorator,
+                  { backgroundColor: colors.tint },
+                ]}
+              />
+            </View>
 
             {userStats && statsData.length > 0 ? (
               <View style={styles.statsGrid}>
@@ -352,12 +433,19 @@ export default function MyProfile() {
                   { backgroundColor: colors.cardBackground },
                 ]}
               >
-                <Ionicons
-                  name="analytics-outline"
-                  size={48}
-                  color={colors.icon}
-                />
-                <Text style={[styles.emptyStateText, { color: colors.icon }]}>
+                <View
+                  style={[
+                    styles.emptyStateIconContainer,
+                    { backgroundColor: "rgba(168, 85, 247, 0.1)" },
+                  ]}
+                >
+                  <Ionicons
+                    name="analytics-outline"
+                    size={32}
+                    color={colors.tint}
+                  />
+                </View>
+                <Text style={[styles.emptyStateText, { color: colors.text }]}>
                   No statistics available yet
                 </Text>
                 <Text
@@ -379,21 +467,30 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 40,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 120,
+    gap: 14,
   },
   profileHeader: {
     alignItems: "center",
-    paddingTop: 20,
-    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingHorizontal: 18,
     paddingBottom: 24,
+    borderRadius: 20,
+    borderWidth: 1,
   },
-  profileImageContainer: {
+  profileImageWrapper: {
+    position: "relative",
     marginBottom: 20,
   },
+  profileImageContainer: {
+    position: "relative",
+  },
   profileImage: {
-    width: 240,
-    height: 240,
-    borderRadius: 200,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     borderWidth: 3,
     borderColor: "#a855f7",
   },
@@ -404,75 +501,117 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 3,
-    borderColor: "#FFFFFF",
+    borderColor: "#a855f7",
+  },
+  userTypeBadgeOverlay: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 3,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  profileInfo: {
+    alignItems: "center",
+    width: "100%",
   },
   profileName: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: "700",
-    marginBottom: 8,
+    marginBottom: 4,
     textAlign: "center",
+  },
+  profileEmail: {
+    fontSize: 13,
+    marginBottom: 12,
+    opacity: 0.9,
   },
   userTypeBadge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    justifyContent: "center",
     paddingVertical: 6,
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     borderRadius: 20,
-    marginTop: 8,
+    borderWidth: 1,
   },
   userTypeText: {
     fontSize: 14,
     fontWeight: "600",
   },
-  editProfileButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 25,
-    marginTop: 16,
-  },
-  editProfileButtonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "600",
-  },
   bioText: {
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 14,
+    lineHeight: 20,
     textAlign: "center",
     marginTop: 16,
     paddingHorizontal: 20,
+    opacity: 0.8,
   },
   actionButtonsContainer: {
     flexDirection: "row",
-    paddingHorizontal: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
     gap: 12,
-    marginBottom: 24,
+    borderRadius: 18,
+    borderWidth: 1,
   },
   actionButton: {
     flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 14,
-    borderRadius: 12,
+    borderRadius: 14,
+    overflow: "hidden",
   },
-  actionButtonText: {
-    fontSize: 15,
+  primaryActionButton: {
+    backgroundColor: "rgba(168, 85, 247, 0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(168, 85, 247, 0.3)",
+  },
+  secondaryActionButton: {
+    backgroundColor: "rgba(107, 114, 128, 0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(107, 114, 128, 0.2)",
+  },
+  actionButtonContent: {
+    alignItems: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    gap: 8,
+  },
+  actionButtonIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  actionButtonLabel: {
+    fontSize: 13,
     fontWeight: "600",
+    color: "#a855f7",
   },
   statsSection: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 18,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  statsSectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 20,
+    gap: 12,
   },
   sectionTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "700",
-    marginBottom: 16,
+  },
+  statsDecorator: {
+    flex: 1,
+    height: 2,
+    borderRadius: 1,
+    opacity: 0.3,
   },
   statsGrid: {
     gap: 12,
@@ -480,15 +619,14 @@ const styles = StyleSheet.create({
   statCard: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
+    padding: 18,
+    borderRadius: 14,
+    marginBottom: 8,
   },
   statIconContainer: {
     width: 48,
     height: 48,
-    borderRadius: 24,
-    backgroundColor: "rgba(183, 148, 246, 0.1)",
+    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
     marginRight: 14,
@@ -497,26 +635,48 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   statLabel: {
-    fontSize: 14,
+    fontSize: 13,
     marginBottom: 4,
+    fontWeight: "500",
   },
   statValue: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: "700",
   },
-  emptyState: {
-    padding: 40,
-    borderRadius: 12,
+  statSuffix: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  statArrow: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: "center",
     alignItems: "center",
+    marginLeft: 8,
+  },
+  emptyState: {
+    padding: 48,
+    borderRadius: 16,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.05)",
+  },
+  emptyStateIconContainer: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 16,
   },
   emptyStateText: {
     fontSize: 16,
     fontWeight: "600",
-    marginTop: 12,
-    marginBottom: 4,
+    marginBottom: 6,
   },
   emptyStateSubtext: {
-    fontSize: 14,
+    fontSize: 13,
     opacity: 0.7,
   },
 });

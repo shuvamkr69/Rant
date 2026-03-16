@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { api } from "../utils/api";
 import {
   CACHE_EXPIRY,
   CACHE_KEYS,
@@ -78,13 +85,28 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
   const [waitingForOtherUser, setWaitingForOtherUser] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
 
+  // Refs to avoid stale closures in socket event handlers
+  const currentChatUserRef = useRef<Match | null>(null);
+  const socketRef = useRef<any>(null);
+
+  // Keep refs in sync with state
+  useEffect(() => {
+    currentChatUserRef.current = currentChatUser;
+    // Reset typing state when switching chat users
+    setIsTyping(false);
+  }, [currentChatUser]);
+
+  useEffect(() => {
+    socketRef.current = socket;
+  }, [socket]);
+
   useEffect(() => {
     initSocket();
 
     return () => {
-      if (socket) {
+      if (socketRef.current) {
         console.log("🔌 Disconnecting socket on unmount");
-        socket.disconnect();
+        socketRef.current.disconnect();
       }
     };
   }, []);
@@ -116,19 +138,43 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
       });
 
       newSocket.on("receive_message", (message: Message) => {
-        setMessages((prev) => [...prev, message]);
+        // Deduplicate: don't add if message with same _id already exists
+        setMessages((prev) => {
+          if (prev.some((m) => m._id === message._id)) return prev;
+          return [...prev, message];
+        });
       });
 
-      newSocket.on("message_sent", (message: Message) => {});
+      newSocket.on("message_sent", (message: Message) => {
+        // Replace the temporary optimistic message with the server-confirmed one
+        setMessages((prev) => {
+          // Find the last temp message (senderId._id === "me") that matches
+          // the same text and receiverId, and replace it
+          const tempIndex = prev.findIndex(
+            (m) =>
+              m.senderId._id === "me" &&
+              m.message === message.message &&
+              m.receiverId._id === message.receiverId._id,
+          );
+          if (tempIndex !== -1) {
+            const updated = [...prev];
+            updated[tempIndex] = message;
+            return updated;
+          }
+          // If no temp message found, add only if not duplicate
+          if (prev.some((m) => m._id === message._id)) return prev;
+          return [...prev, message];
+        });
+      });
 
       newSocket.on("user_typing", (data: { userId: string }) => {
-        if (data.userId === currentChatUser?._id) {
+        if (data.userId === currentChatUserRef.current?._id) {
           setIsTyping(true);
         }
       });
 
       newSocket.on("user_stop_typing", (data: { userId: string }) => {
-        if (data.userId === currentChatUser?._id) {
+        if (data.userId === currentChatUserRef.current?._id) {
           setIsTyping(false);
         }
       });
@@ -274,7 +320,6 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
 
   const loadChatHistory = async (otherUserId: string) => {
     try {
-      const { api } = require("../utils/api");
       console.log("📜 Loading chat history with:", otherUserId);
       const response = await api.get(`/api/v1/users/history/${otherUserId}`);
 
@@ -316,7 +361,6 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
 
   const fetchMatchesFromAPI = async () => {
     try {
-      const { api } = require("../utils/api");
       const response = await api.get("/api/v1/users/fetchMatches");
 
       if (response.status === 200) {

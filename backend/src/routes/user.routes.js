@@ -1,9 +1,11 @@
 import { Router } from "express";
 import {
+  blockUser,
   deleteAccount,
   fetchUserProfileById,
   fetchUserStats,
   fetchWalletBalance,
+  getBlockedUsers,
   getMyProfile,
   getWordCountStatus,
   loginUser,
@@ -38,5 +40,9 @@ userRouter.put(
   upload.single("profileImage"),
   updateUserProfile,
 );
+
+// Block routes
+userRouter.post("/block/:userId", verifyJWT, blockUser);
+userRouter.get("/blocked-users", verifyJWT, getBlockedUsers);
 
 export { userRouter };

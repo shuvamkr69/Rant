@@ -63,7 +63,7 @@ const Login = () => {
           try {
             const pushToken = await registerForPushNotificationsAsync();
             console.log("🔔 [Login] Push token received:", pushToken);
-            
+
             if (pushToken) {
               console.log("🔔 [Login] Sending push token to backend...");
               const sent = await sendPushTokenToBackend(pushToken);
@@ -73,7 +73,9 @@ const Login = () => {
                 console.warn("⚠️ [Login] Failed to send push token");
               }
             } else {
-              console.warn("⚠️ [Login] Push token is null, not sending to backend");
+              console.warn(
+                "⚠️ [Login] Push token is null, not sending to backend",
+              );
             }
           } catch (error) {
             console.error("❌ [Login] Failed to register push token:", error);

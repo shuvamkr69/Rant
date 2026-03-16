@@ -273,7 +273,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log("✅ Sign out complete - User logged out successfully");
     } catch (error) {
       console.error("❌ Error during sign out:", error);
-      
+
       // Even if there's an error, ensure user is logged out locally
       try {
         await clearAllTokens();

@@ -3,6 +3,7 @@
 ## The Problem
 
 Push notifications are returning `null` because the app has a partial Firebase configuration:
+
 - `google-services.json` is referenced in `app.json`
 - But Firebase isn't fully initialized in the app
 - This causes Expo to try using FCM, which fails
@@ -52,7 +53,9 @@ If you prefer to use Firebase Cloud Messaging instead:
 ## What Changed
 
 ### app.json
+
 **Removed:**
+
 ```json
 "googleServicesFile": "./android/app/google-services.json",
 ```
@@ -62,6 +65,7 @@ This tells Expo to use pure Expo Push Notifications instead of FCM.
 ## Why This Happened
 
 You have `google-services.json` file configured, which signals to Expo that you want to use Firebase Cloud Messaging. However:
+
 - FCM requires additional setup (server key in Expo dashboard)
 - FCM requires Firebase to be initialized in your app
 - Without these, `getExpoPushTokenAsync()` fails
@@ -82,6 +86,7 @@ By removing the reference, Expo will use its native push notification system, wh
 ## Backend Compatibility
 
 Your backend is already set up correctly:
+
 - ✅ `updatePushToken` endpoint exists
 - ✅ Accepts `pushToken` in request body
 - ✅ Stores in User model
@@ -102,6 +107,7 @@ No backend changes needed!
 ### Still getting null token after rebuild?
 
 Check console for:
+
 ```
 ❌ Error type: [error type]
 ❌ Error message: [detailed message]
@@ -112,6 +118,7 @@ Share the full error output for further diagnosis.
 ### Token obtained but not sent to backend?
 
 Check for:
+
 ```
 🔑 [Push Token] Access token available: true
 ```

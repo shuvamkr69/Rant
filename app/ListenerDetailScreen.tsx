@@ -203,26 +203,39 @@ const ListenerDetailScreen = () => {
         navigation.replace("/(tabs)" as any);
 
         // Register push token after signup (non-blocking, after navigation)
-        console.log("🔔 [Listener Signup] Scheduling push token registration...");
+        console.log(
+          "🔔 [Listener Signup] Scheduling push token registration...",
+        );
         setTimeout(async () => {
-          console.log("🔔 [Listener Signup] Starting push token registration...");
+          console.log(
+            "🔔 [Listener Signup] Starting push token registration...",
+          );
           try {
             const pushToken = await registerForPushNotificationsAsync();
             console.log("🔔 [Listener Signup] Push token received:", pushToken);
-            
+
             if (pushToken) {
-              console.log("🔔 [Listener Signup] Sending push token to backend...");
+              console.log(
+                "🔔 [Listener Signup] Sending push token to backend...",
+              );
               const sent = await sendPushTokenToBackend(pushToken);
               if (sent) {
-                console.log("✅ [Listener Signup] Push token successfully sent");
+                console.log(
+                  "✅ [Listener Signup] Push token successfully sent",
+                );
               } else {
                 console.warn("⚠️ [Listener Signup] Failed to send push token");
               }
             } else {
-              console.warn("⚠️ [Listener Signup] Push token is null, not sending to backend");
+              console.warn(
+                "⚠️ [Listener Signup] Push token is null, not sending to backend",
+              );
             }
           } catch (error) {
-            console.error("❌ [Listener Signup] Failed to register push token:", error);
+            console.error(
+              "❌ [Listener Signup] Failed to register push token:",
+              error,
+            );
           }
         }, 1500); // Increased delay to 1.5 seconds
       }

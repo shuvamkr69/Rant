@@ -23,7 +23,78 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+// Animated Typing Indicator Component
+const TypingIndicator = () => {
+  const dot1 = useSharedValue(0);
+  const dot2 = useSharedValue(0);
+  const dot3 = useSharedValue(0);
+
+  useEffect(() => {
+    // Animate dots with staggered delays
+    dot1.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 400 }),
+        withTiming(0, { duration: 400 }),
+      ),
+      -1,
+      false,
+    );
+
+    setTimeout(() => {
+      dot2.value = withRepeat(
+        withSequence(
+          withTiming(1, { duration: 400 }),
+          withTiming(0, { duration: 400 }),
+        ),
+        -1,
+        false,
+      );
+    }, 150);
+
+    setTimeout(() => {
+      dot3.value = withRepeat(
+        withSequence(
+          withTiming(1, { duration: 400 }),
+          withTiming(0, { duration: 400 }),
+        ),
+        -1,
+        false,
+      );
+    }, 300);
+  }, []);
+
+  const dot1Style = useAnimatedStyle(() => ({
+    opacity: 0.3 + dot1.value * 0.7,
+    transform: [{ scale: 0.8 + dot1.value * 0.4 }],
+  }));
+
+  const dot2Style = useAnimatedStyle(() => ({
+    opacity: 0.3 + dot2.value * 0.7,
+    transform: [{ scale: 0.8 + dot2.value * 0.4 }],
+  }));
+
+  const dot3Style = useAnimatedStyle(() => ({
+    opacity: 0.3 + dot3.value * 0.7,
+    transform: [{ scale: 0.8 + dot3.value * 0.4 }],
+  }));
+
+  return (
+    <View style={styles.typingDotsContainer}>
+      <Animated.View style={[styles.typingDot, dot1Style]} />
+      <Animated.View style={[styles.typingDot, dot2Style]} />
+      <Animated.View style={[styles.typingDot, dot3Style]} />
+    </View>
+  );
+};
 
 export default function ChatScreen() {
   const { userId, name } = useLocalSearchParams();
@@ -206,9 +277,10 @@ export default function ChatScreen() {
   // Handle exit confirmation
   const handleExitSession = () => {
     if (isSessionActive && !isExiting) {
+      const MIN_SESSION_DURATION = 37; // Match backend value
       const message =
-        elapsedTime < 37
-          ? `Your active session will end.\n\nNote: Sessions must be 30 minutes or longer to count towards your stats. This session has been running for ${formatTime(
+        elapsedTime < MIN_SESSION_DURATION
+          ? `Your active session will end.\n\nNote: Sessions must meet the minimum duration to count towards your stats. This session has been running for ${formatTime(
               elapsedTime,
             )}.`
           : "Your active session will end.";
@@ -380,12 +452,9 @@ export default function ChatScreen() {
     const subscription = AppState.addEventListener("change", (nextAppState) => {
       if (nextAppState === "background" || nextAppState === "inactive") {
         if (isSessionActive && !isExiting) {
-          // Show warning when app is backgrounded
-          showAlert(
-            "Session Active",
-            "You have an active session. Minimizing the app may end your session.",
-            [{ text: "OK", style: "default" }],
-            { icon: "warning", iconColor: "#ff9800" },
+          // Log warning - alerts don't reliably show when app is backgrounded
+          console.log(
+            "⚠️ App backgrounded with active session. Session may be paused by server.",
           );
         }
       }
@@ -432,8 +501,11 @@ export default function ChatScreen() {
   };
 
   const renderMessage = ({ item }: { item: any }) => {
+    // In a 1-on-1 chat, if the senderId is "me" (temp/optimistic message)
+    // or if the senderId doesn't match the other user's ID, it's our message
+    const otherUserId = String(userId);
     const isMyMessage =
-      item.senderId._id === "me" || item.senderId._id !== userId;
+      item.senderId._id === "me" || item.senderId._id !== otherUserId;
 
     return (
       <View
@@ -506,27 +578,36 @@ export default function ChatScreen() {
           <Ionicons name="arrow-back" size={24} color="#ffffff" />
         </TouchableOpacity>
 
-        {/* Profile Picture */}
-        <TouchableOpacity
-          onPress={() => {
-            // @ts-ignore
-            router.push(`/ViewOtherProfile?userId=${userId}`);
-          }}
-          style={styles.profilePictureContainer}
-        >
-          {otherUserProfileImage ? (
-            <Image
-              source={{ uri: otherUserProfileImage }}
-              style={styles.profilePicture}
-            />
-          ) : (
-            <View style={styles.profilePicturePlaceholder}>
-              <Text style={styles.profilePictureText}>
-                {(name as string)?.charAt(0).toUpperCase()}
-              </Text>
-            </View>
-          )}
-        </TouchableOpacity>
+        {/* Profile Picture with Typing Indicator */}
+        <View style={styles.profileSection}>
+          <TouchableOpacity
+            onPress={() => {
+              // @ts-ignore
+              router.push(`/ViewOtherProfile?userId=${userId}`);
+            }}
+            style={styles.profilePictureContainer}
+          >
+            {otherUserProfileImage ? (
+              <Image
+                source={{ uri: otherUserProfileImage }}
+                style={styles.profilePicture}
+              />
+            ) : (
+              <View style={styles.profilePicturePlaceholder}>
+                <Text style={styles.profilePictureText}>
+                  {(name as string)?.charAt(0).toUpperCase()}
+                </Text>
+              </View>
+            )}
+
+            {/* Typing indicator overlaying on profile picture */}
+            {isTyping && (
+              <View style={styles.typingIndicatorOverlay}>
+                <TypingIndicator />
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.headerInfo}>
           <TouchableOpacity
@@ -651,6 +732,10 @@ export default function ChatScreen() {
           keyExtractor={(item) => item._id}
           renderItem={renderMessage}
           contentContainerStyle={styles.messagesList}
+          initialNumToRender={20}
+          maxToRenderPerBatch={15}
+          windowSize={11}
+          removeClippedSubviews={Platform.OS === "android"}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={[styles.emptyText, { color: colors.icon }]}>
@@ -847,6 +932,7 @@ const styles = StyleSheet.create({
   },
   profilePictureContainer: {
     marginRight: 12,
+    position: "relative",
   },
   profilePicture: {
     width: 40,
@@ -866,6 +952,34 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     fontSize: 18,
     fontWeight: "bold",
+  },
+  profileSection: {
+    marginRight: 12,
+  },
+  typingIndicatorOverlay: {
+    position: "absolute",
+    bottom: -4,
+    left: "50%",
+    transform: [{ translateX: -18 }],
+    backgroundColor: "#1a1a1a",
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#2a2a2a",
+  },
+  typingDotsContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    height: 10,
+    gap: 3,
+  },
+  typingDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: "#a855f7",
   },
   headerInfo: {
     flex: 1,
