@@ -1,4 +1,5 @@
 import { useTheme } from "@/components/contexts/ThemeContext";
+import VerificationBanner from "@/components/resuables/VerificationBanner";
 import { HomeScreenSkeleton } from "@/components/skeletons";
 import { api } from "@/components/utils/api";
 import {
@@ -35,6 +36,10 @@ export default function HomeScreen() {
   const [profiles, setProfiles] = useState<Array<any>>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentUserType, setCurrentUserType] = useState<string>("");
+  const [currentUserVerification, setCurrentUserVerification] = useState<{
+    status?: string | null;
+    slot?: string | null;
+  }>({});
   const [showMessageModal, setShowMessageModal] = useState(false);
   const [preMatchMessage, setPreMatchMessage] = useState("");
   const [selectedProfile, setSelectedProfile] = useState<any>(null);
@@ -46,6 +51,10 @@ export default function HomeScreen() {
       const response = await api.get("/api/v1/users/myProfile");
       if (response.status === 200) {
         setCurrentUserType(response.data.userType);
+        setCurrentUserVerification({
+          status: response.data.verificationStatus,
+          slot: response.data.interviewSlot,
+        });
       }
     } catch (error) {
       console.error("❌ Error fetching current user:", error);
@@ -170,6 +179,16 @@ export default function HomeScreen() {
         <HomeScreenSkeleton />
       ) : (
         <View style={styles.HomeScreen}>
+          {/* Verification Banner */}
+          {currentUserVerification.status && (
+            <View style={styles.bannerWrapper}>
+              <VerificationBanner
+                verificationStatus={currentUserVerification.status}
+                interviewSlot={currentUserVerification.slot}
+              />
+            </View>
+          )}
+
           {profiles.length > 0 ? (
             <Swiper
               cards={profiles}
@@ -429,6 +448,10 @@ const styles = StyleSheet.create({
     marginTop: "-12%",
     width: "100%",
     paddingBottom: 95,
+  },
+  bannerWrapper: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   card: {
     height: SCREEN_HEIGHT * 0.8,

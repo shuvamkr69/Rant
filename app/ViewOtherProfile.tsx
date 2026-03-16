@@ -163,7 +163,7 @@ const ViewOtherProfile = () => {
                         <View key={index} style={styles.dayChip}>
                           <Text style={styles.dayChipText}>{day}</Text>
                         </View>
-                      )
+                      ),
                     )}
                   </View>
                 </View>
@@ -226,7 +226,7 @@ const ViewOtherProfile = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#1a0033",
+    backgroundColor: "#000000",
   },
   gradient: {
     flex: 1,

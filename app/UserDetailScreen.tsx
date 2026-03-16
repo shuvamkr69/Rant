@@ -338,7 +338,7 @@ const UserDetailScreen = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#1a0033",
+    backgroundColor: "#000000",
   },
   gradient: {
     flex: 1,

@@ -35,6 +35,13 @@ const userSchema = new mongoose.Schema(
         ref: "User",
       },
     ], // List of user IDs that this user has blocked
+    // Listener verification fields
+    verificationStatus: {
+      type: String,
+      enum: ["pending", "verified", "rejected"],
+      default: null,
+    }, // Verification status for Listeners
+    interviewSlot: { type: String }, // Date/time format: dd/mm/yy - hh to hh
   },
   { timestamps: true },
 );

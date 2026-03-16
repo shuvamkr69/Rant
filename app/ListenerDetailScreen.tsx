@@ -188,19 +188,20 @@ const ListenerDetailScreen = () => {
       );
 
       if (response.status === 201) {
-        const { accessToken, refreshToken } = response.data;
+        const { accessToken, refreshToken, user } = response.data;
 
         console.log("🔐 [Listener Signup] Storing tokens...");
         // Store tokens in memory and secure storage (assuming 15 minutes expiry)
         await setAccessToken(accessToken, 900);
         await setRefreshToken(refreshToken);
+
+        // Store userId for verification screen
+        await AsyncStorage.setItem("userId", user._id);
+
         console.log("✅ [Listener Signup] Tokens stored successfully");
 
-        await signIn();
-        console.log("✅ [Listener Signup] User signed in");
-
-        Alert.alert("Success", "Profile created successfully!");
-        navigation.replace("/(tabs)" as any);
+        // Route to verification waiting screen instead of signing in
+        navigation.replace("/VerificationWaiting" as any);
 
         // Register push token after signup (non-blocking, after navigation)
         console.log(
@@ -494,7 +495,7 @@ const ListenerDetailScreen = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#1a0033",
+    backgroundColor: "#000000",
   },
   gradient: {
     flex: 1,

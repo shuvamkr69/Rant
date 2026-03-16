@@ -13,6 +13,7 @@ import {
   refreshAccessToken,
   registerUser,
   removePushToken,
+  saveInterviewSlot,
   updatePushToken,
   updateUserProfile,
 } from "../controllers/user.controller.js";
@@ -44,5 +45,8 @@ userRouter.put(
 // Block routes
 userRouter.post("/block/:userId", verifyJWT, blockUser);
 userRouter.get("/blocked-users", verifyJWT, getBlockedUsers);
+
+// Listener verification routes
+userRouter.post("/save-interview-slot", saveInterviewSlot);
 
 export { userRouter };

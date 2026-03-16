@@ -655,3 +655,61 @@ export const getBlockedUsers = async (req, res) => {
       .json({ message: "Server error", error: error.message });
   }
 };
+
+/**
+ * Save interview slot for pending listener verification
+ * Format: dd/mm/yy - hh to hh (e.g., "15/03/26 - 10 to 11")
+ */
+export const saveInterviewSlot = async (req, res) => {
+  try {
+    const { userId, interviewSlot } = req.body;
+
+    if (!userId || !interviewSlot) {
+      return res
+        .status(400)
+        .json({ message: "userId and interviewSlot are required" });
+    }
+
+    // Validate interview slot format (dd/mm/yy - hh to hh)
+    const slotRegex = /^\d{2}\/\d{2}\/\d{2}\s*-\s*\d{1,2}\s+to\s+\d{1,2}$/;
+    if (!slotRegex.test(interviewSlot)) {
+      return res.status(400).json({
+        message:
+          "Invalid interview slot format. Use dd/mm/yy - hh to hh (e.g., 15/03/26 - 10 to 11)",
+      });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (user.userType !== "Listener") {
+      return res
+        .status(400)
+        .json({ message: "Interview slots can only be set for Listeners" });
+    }
+
+    // Update user with interview slot and set verification status to pending
+    user.interviewSlot = interviewSlot;
+    if (!user.verificationStatus) {
+      user.verificationStatus = "pending";
+    }
+    await user.save();
+
+    return res.status(200).json({
+      message: "Interview slot saved successfully",
+      user: {
+        _id: user._id,
+        name: user.name,
+        interviewSlot: user.interviewSlot,
+        verificationStatus: user.verificationStatus,
+      },
+    });
+  } catch (error) {
+    console.error("❌ Error saving interview slot:", error);
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
+  }
+};

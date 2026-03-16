@@ -1,4 +1,5 @@
 import { useTheme } from "@/components/contexts/ThemeContext";
+import VerificationBanner from "@/components/resuables/VerificationBanner";
 import { MyProfileSkeleton } from "@/components/skeletons";
 import { api } from "@/components/utils/api";
 import {
@@ -346,6 +347,14 @@ export default function MyProfile() {
               )}
             </View>
           </Animated.View>
+
+          {/* Verification Banner */}
+          {userProfileData?.verificationStatus && (
+            <VerificationBanner
+              verificationStatus={userProfileData.verificationStatus}
+              interviewSlot={userProfileData.interviewSlot}
+            />
+          )}
 
           {/* Action Buttons */}
           <Animated.View

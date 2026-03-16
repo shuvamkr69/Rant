@@ -23,9 +23,14 @@ export const unstable_settings = {
   anchor: "(tabs)",
 };
 
-const screenOptions = {
-  animation: "fade" as const,
-  animationDuration: 300,
+// Custom dark theme with pure black background to prevent white flash during transitions
+const CustomDarkTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    background: "#000000",
+    card: "#000000",
+  },
 };
 
 function BlurTransitionOverlay({ isVisible }: { isVisible: boolean }) {
@@ -124,7 +129,7 @@ function RootNavigator() {
   }
 
   return (
-    <NavigationThemeProvider value={DarkTheme}>
+    <NavigationThemeProvider value={CustomDarkTheme}>
       {isSignedIn ? (
         <Stack
           screenOptions={{
@@ -165,6 +170,15 @@ function RootNavigator() {
           />
           <Stack.Screen
             name="ChatScreen"
+            options={{
+              animation: "slide_from_right",
+            }}
+            listeners={{
+              focus: () => setShowBlur(true),
+            }}
+          />
+          <Stack.Screen
+            name="VerificationWaiting"
             options={{
               animation: "slide_from_right",
             }}
